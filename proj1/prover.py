@@ -34,7 +34,8 @@ def gen_leaves_for_merkle_tree():
     
     return leaves
 
-def gen_merkle_proof(leaves, pos):
+# def gen_merkle_proof(leaves, pos): TA's fault
+def gen_merkle_proof_hashes(leaves, pos):
     """Takes as input a list of leaves and a leaf position.
     Returns the a the list of hashes that prove the leaf is in 
     the tree at position pos."""
@@ -58,7 +59,9 @@ def gen_merkle_proof(leaves, pos):
         #######  YOUR CODE GOES HERE                              ######
         #######     to hash internal nodes in the tree use the    ######
         #######     function hash_internal_node(left,right)       ######
-    
+        hashes.append(state[pos + 1 if pos % 2 == 0 else pos - 1])
+        state = [hash_internal_node(state[i], state[i + 1]) for i in range(0, len(state), 2)]
+        pos >>= 1
     # Returns list of hashes that make up the Merkle Proof
     return hashes
     
