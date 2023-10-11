@@ -1,0 +1,284 @@
+\documentclass[11pt]{article}
+\usepackage{epsfig,amsfonts,amsmath,amssymb,graphics,fullpage}
+
+\newcommand{\comment}[1]{}
+\newcommand{\deq}{\mathrel{:=}}
+\newcommand{\cat}{\mathrel{\|}}
+\newcommand{\KK}{\mathcal{K}}  % key space
+\newcommand{\XX}{\mathcal{X}}   % input space
+\newcommand{\YY}{\mathcal{Y}}   % output space
+\newcommand{\MM}{\mathcal{M}}   % output space
+\newcommand{\CC}{\mathcal{C}}   % output space
+\newcommand{\CIPHER}{\mathcal{E}}   % cipher
+
+\setlength{\topmargin}{0in}
+\setlength{\headheight}{0in}
+\setlength{\headsep}{0in}
+\setlength{\topskip}{0in}
+
+\newcommand{\lcat}{\langle}
+\newcommand{\rcat}{\rangle}
+\newcommand{\tuple}[1]{\lcat #1 \rcat}
+
+\newcommand{\DES}{{\sf DES}}
+
+\newcommand{\xor}{\oplus}
+\newcommand{\Z}{\mathbb{Z}}
+\newcommand{\adv}{\mathcal{A}}
+\newcommand{\bdv}{\mathcal{B}}
+\newcommand{\rgets}{\stackrel{\scriptscriptstyle{R}}{\leftarrow}}
+\newcommand{\EXP}{\textrm{EXP}}
+
+
+\newenvironment{myalg}{\begin{list}{}{
+        \setlength{\labelwidth}{0.5cm}
+        \setlength{\leftmargin}{1cm}
+        \setlength{\itemsep}{0cm}
+        \setlength{\topsep}{0cm}
+        \setlength{\parsep}{0.05cm}}}{\end{list}}
+
+\newcommand{\squish}{
+      \setlength{\topsep}{0pt}
+      \setlength{\itemsep}{0ex}
+      \vspace{-1ex}
+      \setlength{\parskip}{0pt}}
+\newcommand{\squishend}{\vskip -1ex\relax}
+
+%\newcommand{\solution}[1]{\noindent{\bf Solution:} {\it {#1}}}
+\newcommand{\solution}[1]{}
+
+
+%%%%%%%%
+\usepackage{enumitem}
+\usepackage{color}
+\usepackage{ulem}
+\usepackage{hyperref} % for URL links
+\usepackage{amsmath} % for cases environment
+
+\newenvironment{problems}
+{\begin{enumerate}[label=\bfseries Exercise \arabic*.,align=left]}
+{\end{enumerate}}
+
+\newenvironment{subparts}
+{\begin{enumerate}[label=\bfseries \alph*.,align=right,leftmargin=1.5em]}
+{\end{enumerate}}
+%%%%%%%%
+
+\begin{document}
+
+\newlength{\boxwidth}
+\setlength{\boxwidth}{\textwidth}
+\addtolength{\boxwidth}{-2cm}
+\framebox[\textwidth]{
+\begin{minipage}[t]{\boxwidth}
+{\bf CS251: Cryptocurrencies and Blockchain Technologies \hfill Fall 2022}  \\[-0.3cm]
+\begin{center} {\huge Programming Project \#2} \end{center}
+Due: 11:59pm on Mon., {\bf Oct. 18, 2022} \\
+Submit via Gradescope code: {\bf DJ66V3}
+\end{minipage}}
+
+\vspace{1cm}
+In this project, you will gain experience creating transactions using the Bitcoin and BlockCypher testnet blockchains and Bitcoin Script.
+This project consists of 4 questions, each of which is explained below. The starter code we provide uses python-bitcoinlib, a free, low-level Python~3 library for manipulating Bitcoin transactions.
+
+\section{Project Background}
+
+\subsection{Anatomy of a Bitcoin Transaction}
+\begin{figure}[h!]
+  \centering
+  \includegraphics[width=.75\textwidth]{txin_txout.png}
+  \caption{Each \texttt{TxIn} references the \texttt{TxOut} of a previous
+    transaction, and a \texttt{TxIn} is only valid if its scriptSig outputs
+  True when prepended to the \texttt{TxOut}'s scriptPubKey.}
+\end{figure}
+
+Bitcoin transactions are fundamentally a list of outputs, each of which is associated with an amount of bitcoin that is ``locked'' with a puzzle in the form of a program called a scriptPubKey (also sometimes called a ``smart contract''), and a list of inputs, each of which references an output from the list of outputs and includes the ``answer'' to that output's puzzle in the form of a program called a scriptSig.
+Validating a scriptSig consists of appending the associated scriptPubKey to it, running the combined script and ensuring that it outputs True.
+
+\[
+  \text{run}(\textbf{scriptSig } || \textbf{ scriptPK}) =
+  \begin{cases}
+      \text{True} & \text{valid scriptSig, TxIn spend TxOut} \\
+      \text{else} & \text{invalid scriptSig, TxIn cannot spend TxOut}
+   \end{cases}
+\]
+
+Most transactions are ``PayToPublicKeyHash'' or ``P2PKH'' transactions, where the scriptSig is a list of the recipient's public key and signature, and the scriptPubKey performs cryptographic checks on those values to ensure that the public key hashes to the recipient's bitcoin address and the signature is valid.
+
+Each transaction input is referred to as a \texttt{TxIn}, and each transaction output is referred to as a \texttt{TxOut}. The situation for a transaction with a single input and single output is summarized by Figure 1 above.
+
+The sum of the bitcoin in the unspent outputs to a transaction must not exceed the sum of the inputs for the transaction to be valid. The difference between the total input and total output is implicitly taken to be a transaction fee, as a miner can modify a received transaction and add an output to their address to make up the difference before including it in a block.
+
+\[\sum \text{TxIn} = \sum \text{TxOut} + \text{Tx}_{\text{fee}}\]
+
+For the first 3 questions in this project, the transactions you create will consume one input and create one PayToPublicKeyHash output that sends an amount of bitcoin back to the testnet faucet. The 4th question will carry out a swap of coins between two entities, Alice and Bob. For these exercises, you will want to take the fee into account when specifying how much to send and subtract a bit from the amount in the output you're sending, say 0.001 BTC (this is just to be safe, you can probably include a fee as low as 0.00001 BTC if your funds are running low). \textcolor{blue}{If you do not include a fee, it is likely that your transaction will never be added to the blockchain. Since BlockCypher (see Section~\ref{testnets}) will delete transactions that remain unconfirmed after a day or two, it is very important that you include a fee to make sure that your transactions are eventually confirmed.}
+
+\subsection{Script Opcodes}
+Your code will use the Bitcoin stack machine's opcodes, which are documented on the Bitcoin wiki [1]. When composing programs for your transactions' scriptPubKeys and scriptSigs you may specify opcodes by using their names verbatim. For example, below is an example of a function that returns a scriptPubKey that cannot be spent, but rather acts as storage space for an arbitrary piece of data that someone may want to save to the blockchain using the \texttt{OP\_RETURN} opcode.
+\begin{verbatim}
+def save_message_scriptPubKey(message):
+    return [OP_RETURN,
+            message]
+\end{verbatim}
+
+Examples of some opcodes that you will likely be making use of include \texttt{OP\_DUP}, \texttt{OP\_CHECKSIG}, \texttt{OP\_EQUALVERIFY}, and \texttt{OP\_CHECKMULTISIG}, but you will end up using additional ones as well.
+
+\subsection{Overview of Testnets} {\label{testnets}}
+Rather than having you download the entire testnet blockchain and run a bitcoin client on your machine, we will be making use of an online block explorer to upload and view transactions. The one that we will be using is called BlockCypher, which features a nice web interface as well as an API for submitting raw transactions that the starter code uses to broadcast the transactions you create for the exercises. After completing and running the code for each exercise, BlockCypher will return a JSON representation of your newly created transaction, which will be printed to your terminal. An example transaction object along with the meaning of each field can be found at BlockCypher's developer API documentation at 
+\href{https://www.blockcypher.com/dev/bitcoin/\#tx}{https://www.blockcypher.com/dev/bitcoin/\#tx}.
+Of particular interest for the purposes of this project will be the \texttt{hash}, \texttt{inputs}, and \texttt{outputs} fields. Note that you will be using two different test networks (``testnets'') for this project: the Bitcoin testnet (the current version is Testnet3) for questions 1-4 and the BlockCypher testnet for question 4. These will be useful in testing your code. As part of these exercises, you will request coins to some addresses (more details below).
+
+\section{Getting Started}
+\begin{enumerate}
+\item Download the starter code from the course website, navigate to the directory and run \texttt{pip install -r requirements.txt} to intall the required dependencies. For this project, \textcolor{blue}{ensure that you are using Python 3.} If you are not using a Python virtual environment, you must do two things differently. First, use \texttt{pip3} instead of \texttt{pip} to install packages to Python 3. Second, use the \texttt{python3} command to run scripts instead of \texttt{python} to run with the Python 3 interpreter.
+
+\item Make sure you understand the structure of Bitcoin transactions and read the references in the Recommended Reading section below if you would like more information.
+
+\item Read over the starter code. Here is a summary of what each of the files contain:
+    \subitem \texttt{lib/keygen.py}:
+    \subitem You will run this script to generate new private keys and corresponding addresses for the Bitcoin Testnet. Questions 1-3 will solely use these private keys, while question 4 will also require you to use an alternative method to generate Block Cypher Testnet keys. \textbf{You are not expected to modify this file.}
+    \vspace{0.3cm}
+    \subitem \texttt{lib/split\_test\_coins.py}:
+    \subitem You will run this script to split your coins across multiple unspent transaction outputs (UTXOs). You will have to edit this file to input details about which transaction output you are splitting, the UTXO index, etc.
+    \vspace{0.3cm}
+    \subitem \texttt{lib/config.py}:
+    \subitem You will modify this file to include the private keys for your users. Note that \texttt{my\_private\_key}, \texttt{alice\_secret\_key\_BTC} and \texttt{bob\_secret\_key\_BTC} will be generated using the \texttt{lib/keygen.py} file. You will make web requests to generate \texttt{alice\_secret\_key\_BCY} and \texttt{bob\_secret\_key\_BCY}. There are comments in \texttt{config.py} and instructions during setup for how to do this.
+    \vspace{0.3cm}
+    \subitem \texttt{lib/utils.py}:
+    \subitem Contains various util methods. \textbf{You are not expected to modify this file.}
+    \vspace{0.3cm}
+    \subitem \texttt{Q1.py, Q2a.y, Q2b.py, Q3a.py, Q3b.py, Q4.py}:
+    \subitem You will have to modify the various scriptSig and scriptPubKey methods, as well as fill the transaction parameters. Note that for question 3, you will have to generate additional private and public keys for customers using the \texttt{lib/keygen.py} file.
+    \vspace{0.3cm}
+    \subitem \texttt{alice.py, bob.py}:
+    \subitem Creates and submits transactions for Q4 on behalf of Alice and Bob. \textbf{You are not expected to modify these files.}
+    \vspace{0.3cm}
+    \subitem \texttt{swap.py}
+    \subitem Contains the logic to carry out the atomic swap. \textbf{You are not expected to modify this file.}
+    \vspace{0.3cm}
+    \subitem \texttt{docs/transactions.py}
+    \subitem You are expected to fill this file with the transaction ids generated for questions 1-3.
+    \vspace{0.3cm}
+    \subitem \texttt{docs/Q4design\_doc.txt}
+    \subitem You are expected to fill this design doc to explain your solution to Q4.
+
+\item Be sure to start early on this project, as block confirmation times can vary depending on how busy the network is!
+
+\end{enumerate}
+
+
+\section{Setup}
+\begin{enumerate}
+    \item Open \texttt{lib/config.py} and read the file. Note that there are several users that you will need to generate private keys and addresses for.
+    \item First we are going to generate key pairs for you, Alice, and Bob on the Bitcoin Testnet. Run \texttt{lib/keygen.py} to generate private keys for \texttt{my\_private\_key}, \texttt{alice\_secret\_key\_BTC} and \texttt{bob\_secret\_key\_BTC}, and record these keys in \texttt{lib/config.py}. Note that Alice and Bob's keys will only come into play for question 4. Please make sure to create different keys for Alice and Bob, you wouldn't want them to be able to forge each others' transactions!
+    \item Next, we want to get some test coins for \texttt{my\_private\_key} and  \texttt{alice\_secret\_key\_BTC}. To do so: \begin{enumerate}
+        \item Use the following Testnet faucet to generate test BTC.
+        (\href{https://testnet-faucet.com/btc-testnet/}{https://testnet-faucet.com/btc-testnet/}) and paste in the corresponding addresses of the users. 
+        Note that faucets will often rate-limit requests for coins based on Bitcoin address and IP address, so try not to lose your test Bitcoin too often. It is recommended that you use the address associated with \texttt{my\_private\_key} with the first faucet listed above since that faucet gives more coins and you will be performing more exercises with that address. Note that if the faucet is used more, it will take more time to receive the coins, so it is important to start the project early! Note that the faucet limits requests by the same IP address to one every hour.
+        \item Record the transaction hash the faucet provides as you will need it later. Viewing the transaction in a block explorer (e.g.
+        \href{https://live.blockcypher.com/}{https://live.blockcypher.com/}) will also let you know which output of the transaction corresponds to your address, and you will need this \texttt{utxo\_index} for the next step as well. If the faucet doesn't give you a transaction hash, you can also paste the user address into the block explorer and find the transaction that way.
+    \end{enumerate}
+    \item Next, we are going to create generate key pairs for Alice and Bob on the BlockCypher testnet.
+    \begin{enumerate}
+		\item
+			Sign up for an account with Blockcypher to get an API token here: \\
+			\href{https://accounts.blockcypher.com/}{https://accounts.blockcypher.com/}
+		\item
+			Create BCY testnet keys for Alice and Bob and place into \texttt{lib/config.py}.
+			\begin{verbatim}
+  			curl -X POST 'https://api.blockcypher.com/v1/bcy/test/addrs?token=YOURTOKEN'
+			\end{verbatim}
+    		Note, if you copy this command directly into your terminal from this handout, you'll likely need to delete and retype the \verb|'| for the command to work.
+	\end{enumerate}
+	\item
+		Give Bob's address bitcoin on the Blockcypher testnet (BCY) and record the transaction hash.
+		\begin{verbatim}
+		curl -d '{"address": "BOBS_BCY_ADDRESS", "amount": 100000}' \
+		https://api.blockcypher.com/v1/bcy/test/faucet?token=YOURTOKEN
+		\end{verbatim}
+		Note, if you copy this command directly into your terminal from this handout, you'll likely need to delete and retype the \verb|'{| and the \verb|}'|, delete the \verb|\|, and condense the command into one line for it to work.
+    \item The faucets will give you, Alice, and Bob one spendable output per person, but we would like to have multiple outputs to spend in case we accidentally lock some with invalid scripts. Edit the parameters at the bottom of \texttt{split\_test\_coins.py}, where \texttt{txid\_to\_spend} is the transaction hash from the faucet to your address, \texttt{utxo\_index} is 0 if your output was first in the faucet transaction and 1 if it was second, and \texttt{n} is the number of outputs you want your test coins split evenly into, and run the program with \texttt{python split\_test\_coins.py}. A perfect run through of questions 1-3 would require \texttt{n} = 3 for your address, one for each exercise, but if you anticipate accidentally locking an output due to a faulty script a couple times per exercise then you might want to set \texttt{n} to something higher like 8 so that you don't have to wait to access the faucet again or have to try with a different Bitcoin address. If \texttt{split\_test\_coins.py} was successful, you should get back some information about the transaction. Record the transaction hash, as each exercise will be spending an output from this transaction and will refer to it using this hash.
+    
+    Note: The faucet transaction would need to be fully verified (at least 6/6 confirmations) before you can split the coins you received. Waiting times will vary based on how busy the network is.
+    
+    \item You should also split Alice's and Bob's coins into multiple outputs just to be safe. Note that each time you switch between the Bitcoin and BlockCypher tesntets, you should adjust the \texttt{network\_type} variable in \texttt{lib/config.py}.
+    \item At the end, verify that you created Bitcoin Testnet addresses for you,  Alice, and Bob. You and Alice should have some coins on this blockchain. There should also be BlockCypher Testnet addresses for Alice and Bob. Bob should have some coins on this blockchain. Give yourself a pat on the back for finishing a long setup. Now it's time to explore creating transactions with Bitcoin Script.
+\end{enumerate}
+
+\section{Questions}
+For each of the questions below, you will use the Bitcoin Script opcodes to create transactions. For question 4, you will write an atomic swap transaction across two different blockchains. To publish each transaction created for the exercises, edit the parameters at the bottom of the file to specify which transaction output the solution should be run with along with the amount to send in the transaction. If the scripts you write aren't valid, an exception will be thrown before they're published. For questions 1-3, make sure to record the transaction hash of the created transaction and write it to \texttt{docs/transactions.py}. After completing each exercise, look up the transaction hash in a blockchain explorer to verify whether the transaction was picked up by the network. Make sure that all your transactions have been posted successfully before submitting their hashes.
+\begin{problems}
+
+\item
+  Open \texttt{Q1.py} and complete the scripts labelled with \texttt{TODO}s
+  to redeem an output you own and send it back to the faucet with a standard
+  PayToPublicKeyHash transaction. The faucet address is already included in the starter code for you. Your functions should return a list consisting of only OP codes and parameters passed into the function.
+
+\item For question 2, we will generate a transaction that is dependent on some constants.
+    \begin{enumerate}
+        \item Open \texttt{Q2a.py}. Generate a transaction that can be redeemed by the solution $(x,y)$ to the following system of two linear equations:
+        \[
+            x+y = \text{(first half of your suid)}  \qquad\text{and}\qquad
+            x-y = \text{(second half or your suid)}
+        \]
+        For an integer solution to exist, the rightmost digit of the first and second halves of your suid must either be both even or both odd. Therefore, you can change the rightmost digit of the second half of your suid to match the evenness or oddness of the righmost digit of the first half. Make sure you use \texttt{OP\_ADD} and \texttt{OP\_SUB} in your scriptPubKey.
+        \item Open \texttt{Q2b.py}. Redeem the transaction you generated above. The redemption script should be as small as possible. That is, a valid scriptSig should consist of simply pushing two integers $x$ and $y$ to the stack.
+    \end{enumerate}
+
+\item Next, we will create a multi-sig transaction involving four parties.
+    \begin{enumerate}
+        \item Open \texttt{Q3a.py}. Generate a multi-sig transaction involving four parties such that the transaction can be redeemed by the first party (bank) combined with any one of the 3 others (customers) but not by only the customers or only the bank. \textcolor{blue}{You may assume the role of the bank for this problem so that the bank's private key is your private key and the bank's public key is your public key. Generate the customers' keys using \texttt{lib/keygen.py} and paste them in \texttt{Q3a.py}.}
+        \item Open \texttt{Q3b.py}. Redeem the transaction and make sure that the scriptSig is as small as possible. You can use any legal combination of signatures to redeem the transaction but make sure that all combinations would have worked.
+    \end{enumerate}
+
+\item Last but not least, you will create a transaction called a {\it cross-chain atomic swap}, allowing two entities to securely trade ownership over cryptocurrencies on different blockchains. In this case, Alice and Bob will swap coins between the Bitcoin testnet and BlockCypher testnet. As you recall from setup, Alice has bitcoin on BTC Testnet3, and Bob has bitcoin on the BCY Testnet. They want to trade ownership of their respective coins securely, something that can't be done with a simple transaction because they are on different blockchains. The idea here is to set up transactions around a secret x, that only one party (Alice) knows. In these transactions only H(x) will be published, leaving x secret. Transactions will be set up in such a way that once x is revealed, both parties can redeem the coins sent by the other party. If x is never revealed, both parties will be able to retrieve their original coins safely, without help from the other. Before you start, make sure to read \texttt{swap.py}, \texttt{alice.py}, and \texttt{bob.py}. Compare to the pseudocode in \href{https://en.bitcoin.it/wiki/Atomic\_cross-chain\_trading}{https://en.bitcoin.it/wiki/Atomic\_cross-chain\_trading}. This will be very helpful in understanding this assignment. Note that for this question, you will only be editing \texttt{Q4.py} and you can test your code by running \texttt{python swap.py}.
+
+    \begin{enumerate}
+    \item
+    	Consider the ScriptPubKey necessary for creating a transaction to carry out a cross-chain atomic swap. This transaction must be redeemable by the recipient (if they have a secret x that corresponds to Hash(x)), or redeemable with signatures from both the sender and the recipient. Write this ScriptPubKey in coinExchangeScript in \texttt{Q4.py}.
+
+    \item Write the accompanying ScriptSigs:
+    	\begin{enumerate}
+    	\item
+    		Write the ScriptSig necessary to redeem the transaction in the case where the recipient knows the secret x. Write this in coinExchangeScriptSig1 in \texttt{Q4.py}.
+    	\item
+    		Write the ScriptSig necessary to redeem the transaction in the case where both the sender and the recipient sign the transaction. Write this in coinExchangeScriptSig2 in \texttt{Q4.py}.
+    	\end{enumerate}
+    \item
+    	Run your code using \texttt{python swap.py}. We aren't requiring that the transactions be broadcasted, as that requires some waiting to validate transactions. Running with broadcast\_transactions=False will validate that ScriptSig + ScriptPK return true. Try this for alice\_redeems=True as well as alice\_redeems=False.
+
+    	\textbf{OPTIONAL:} Try with broadcast\_transactions=True, which will make the code sleep for an appropriate amount of time to post everything to the blockchain and verify correctly. Warning: will take 30 or more minutes to run.
+    \item Fill in \texttt{docs/Q4design\_doc.txt} with the following information:
+        \begin{enumerate}
+            \item An explanation of what you wrote and how the coinExchangeScript works.
+            \item Briefly, how the coinExchangeScript you wrote fits into the bigger
+            picture of this atomic swap.
+            \item Consider the case of Alice sending coins to Bob with coinExchangeScript:
+                \begin{itemize}
+                    \item Why can Alice always get her money back if Bob doesn't redeem it?
+                    \item Why can't this be solved with a simple 1-of-2 multisig?
+                \end{itemize}
+            
+        \end{enumerate}
+
+    \end{enumerate}
+\end{problems}
+
+\section{Submitting your code}
+Record your transaction hashes in the \texttt{docs/transactions.py} file for questions 1-3. The hashes should be listed one per line in the same order as the questions.
+
+For question 4, make sure \texttt{docs/Q4design\_doc.txt} is filled out and your code verifies when run with \texttt{broadcast\_transactions=False}.
+
+Please submit all code for this assignment. Please create a single .tar or .zip file that includes all your deliverables for all four questions. Submit via Gradescope using the code {\bf D5GKRX}.
+
+\section{Recommended Reading}
+\begin{enumerate}
+  \item Bitcoin Script:
+  \href{https://en.bitcoin.it/wiki/Script}{https://en.bitcoin.it/wiki/Script}
+  \item Bitcoin Transaction Format:
+  \href{https://en.bitcoin.it/wiki/Transaction}{https://en.bitcoin.it/wiki/Transaction}
+  \item Bitcoin Transaction Details:
+  \href{https://privatekeys.org/2018/04/17/anatomy-of-a-bitcoin-transaction/}{https://privatekeys.org/2018/04/17/anatomy-of-a-bitcoin-transaction/}
+  \item How Atomic Swap Works: \href{https://en.bitcoin.it/wiki/Atomic\_cross-chain\_trading}{https://en.bitcoin.it/wiki/Atomic\_cross-chain\_trading}
+\end{enumerate}
+\end{document}
