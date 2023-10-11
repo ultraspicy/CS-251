@@ -34,8 +34,7 @@ def gen_leaves_for_merkle_tree():
     
     return leaves
 
-# def gen_merkle_proof(leaves, pos): TA's fault
-def gen_merkle_proof_hashes(leaves, pos):
+def gen_merkle_proof(leaves, pos):
     """Takes as input a list of leaves and a leaf position.
     Returns the a the list of hashes that prove the leaf is in 
     the tree at position pos."""
