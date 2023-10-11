@@ -15,13 +15,19 @@ from config import (my_private_key, my_public_key, my_address,
 from utils import create_txin, create_txout, broadcast_transaction
 
 
-
+# This function split amount_to_send coins from txid_to_spend into n euqal pieces
+# Input 
+#   - txid_to_spend, the funding transaction id 
+#   - utxo_index, the index of the output of the funding transaction. txid_to_spend and utxo_index will locate a UTXO
+#   - n, the # of shares
+#   - 
 def split_coins(amount_to_send, txid_to_spend, utxo_index, n, network):
     txin_scriptPubKey = address.to_scriptPubKey()
     txin = create_txin(txid_to_spend, utxo_index)
     txout_scriptPubKey = address.to_scriptPubKey()
     txout = create_txout(amount_to_send / n, txout_scriptPubKey)
     tx = CMutableTransaction([txin], [txout]*n)
+    ### why do we need txin_scriptPubKey
     sighash = SignatureHash(txin_scriptPubKey, tx,
                             0, SIGHASH_ALL)
     txin.scriptSig = CScript([private_key.sign(sighash) + bytes([SIGHASH_ALL]),
