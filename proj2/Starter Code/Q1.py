@@ -36,7 +36,7 @@ def send_from_P2PKH_transaction(amount_to_send,
     sender_address = P2PKHBitcoinAddress.from_pubkey(sender_public_key)
 
     txout = create_txout(amount_to_send, txout_scriptPubKey)
-    
+
     txin_scriptPubKey = P2PKH_scriptPubKey(sender_address)
     txin = create_txin(txid_to_spend, utxo_index)
     txin_scriptSig = P2PKH_scriptSig(txin, txout, txin_scriptPubKey,
@@ -51,9 +51,9 @@ def send_from_P2PKH_transaction(amount_to_send,
 if __name__ == '__main__':
     ######################################################################
     # TODO: set these parameters correctly
-    amount_to_send = 0.000005 # amount of BTC in the output you're sending minus fee
+    amount_to_send = 0.000001 # amount of BTC in the output you're sending minus fee
     txid_to_spend = (
-        '2205b4db33644a119e20bbf6826a43ee7821a904b4b7188a992a94c5826bad86')
+        '8de56a28f396239f6133fc8d4ca3ee6b500c0a2d290339a5197a65822d61ed96')
     utxo_index = 0 # index of the output you are spending, indices start at 0
     ######################################################################
 

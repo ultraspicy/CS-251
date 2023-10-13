@@ -10,17 +10,28 @@ from Q1 import send_from_P2PKH_transaction
 ######################################################################
 # TODO: Complete the scriptPubKey implementation for Exercise 2
 Q2a_txout_scriptPubKey = [
-        # fill this in!
+        OP_2DUP, 
+        OP_ADD, 
+        #OP_PUSHDATA2, 
+        0x0292, 
+        OP_EQUALVERIFY,
+        OP_SUB, 
+        #OP_PUSHDATA2, 
+        0x1532, 
+        OP_EQUAL
     ]
 ######################################################################
 
 if __name__ == '__main__':
     ######################################################################
     # TODO: set these parameters correctly
-    amount_to_send = None # amount of BTC in the output you're sending minus fee
+    # make amount_to_send 
+    #  - small enough to get faster confirmation
+    #  - significant engough to ensure the redemption 
+    amount_to_send = 0.00000256 # amount of BTC in the output you're sending minus fee
     txid_to_spend = (
-        'XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX')
-    utxo_index = None # index of the output you are spending, indices start at 0
+        '8de56a28f396239f6133fc8d4ca3ee6b500c0a2d290339a5197a65822d61ed96')
+    utxo_index = 5 # index of the output you are spending, indices start at 0
     ######################################################################
 
     response = send_from_P2PKH_transaction(
