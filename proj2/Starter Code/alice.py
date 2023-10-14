@@ -22,13 +22,14 @@ def hash_of_secret():
 
 def alice_swap_tx(txid_to_spend, utxo_index, amount_to_send):
     txout_script = coinExchangeScript(alice_public_key_BTC, bob_public_key_BTC, hash_of_secret())
-    txout = create_txout(amount_to_send, txout_script)
+    txout = create_txout(amount_to_send, txout_script) # send amount if 
 
-    txin_scriptPubKey = P2PKH_scriptPubKey(alice_address_BTC)
+    txin_scriptPubKey = P2PKH_scriptPubKey(alice_address_BTC) # condition to spend alice's (her own) btc
     txin = create_txin(txid_to_spend, utxo_index)
+     ### why txin_scriptPubKey is needed 
     txin_scriptSig = P2PKH_scriptSig(txin, txout, txin_scriptPubKey,
         alice_secret_key_BTC, alice_public_key_BTC)
-    
+    ### why txin_scriptPubKey is needed 
     tx = create_signed_transaction(txin, txout, txin_scriptPubKey,
                               txin_scriptSig)
     print('Alice swap tx (BTC) created successfully!')
