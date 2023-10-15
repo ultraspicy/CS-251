@@ -11,4 +11,35 @@
 #            Why can't this be solved with a simple 1-of-2 multisig? 
 #
 
+The idea behind atomic swap
+    The core idea is that both parties created a tx contaning the their own (that's say A) 
+    swaping coin and then the other party (that's say B) sign that tx so to promise the 
+    redemption of the original party (A) in case of error. 
+    Then the first redemption will unveil the serect, enabling every party to redeem. By such
+    design, no one is at risk of wasting their own assets because everyone is able to 
+     - get the alt_coin if the shared secret is broadcasted 
+     - otherwise take back original asset
+
+An explanation of what you wrote and how the ScriptPubKey works
+    I basically implement the thing mentioned here, preseduo code is something like
+        IF you have X 
+            go redeem your alt_coin. 
+        Otherwise 
+            you can redeem your own coin after certain timewindow.
+
+
+Briefly, how the ScriptPubKey you wrote fits into the bigger picture of this atomic swap.
+    ScriptPubKey can be used "directly to trade between bitcoin-derived chains without special 
+    support on the side of protocol". So to speak, the atomic swap algo will work cross-chain 
+    if two chains share the same public_key_secret_key encoding+decoding+signing scenario.
+
+
+Why can Alice always get her money back if Bob doesn't redeem it? 
+    Alice only shares the alice_swap_tx after bob agree the redemption of alice_swap_tx from Alice, 
+    by signing her return_coins_tx. Meantime, Bob will also make sure there is a time window so he 
+    has the priority to redeem alice_swap_tx.
+
+Why can't this be solved with a simple 1-of-2 multisig? 
+    None 1-of-2 multisig of coinExchangeScript will work cuz either party can immediately sign bob_swap_tx
+    and spend the asset from tx. We need to lock both swap_tx by a shared secret.
 
