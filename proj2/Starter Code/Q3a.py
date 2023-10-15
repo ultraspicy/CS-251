@@ -41,10 +41,10 @@ Q3a_txout_scriptPubKey = [
 if __name__ == '__main__':
     ######################################################################
     # TODO: set these parameters correctly
-    amount_to_send = 0.00000256 # amount of BTC in the output you're sending minus fee
+    amount_to_send = 0.003375 # amount of BTC in the output you're sending minus fee
     txid_to_spend = (
-        '8de56a28f396239f6133fc8d4ca3ee6b500c0a2d290339a5197a65822d61ed96')
-    utxo_index = 6 # index of the output you are spending, indices start at 0
+        'ac84188c049cf4f92348a7879d580bc0008faab3699c380b31e6580a01a92d60')
+    utxo_index = 2 # index of the output you are spending, indices start at 0
     ######################################################################
 
     response = send_from_P2PKH_transaction(amount_to_send, txid_to_spend, 

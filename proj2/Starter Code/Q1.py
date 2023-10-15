@@ -53,7 +53,7 @@ if __name__ == '__main__':
     # TODO: set these parameters correctly
     amount_to_send = 0.000001 # amount of BTC in the output you're sending minus fee
     txid_to_spend = (
-        '8de56a28f396239f6133fc8d4ca3ee6b500c0a2d290339a5197a65822d61ed96')
+        'ac84188c049cf4f92348a7879d580bc0008faab3699c380b31e6580a01a92d60')
     utxo_index = 0 # index of the output you are spending, indices start at 0
     ######################################################################
 
