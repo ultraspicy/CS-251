@@ -31,7 +31,7 @@ def coinExchangeScriptSig1(sig_recipient, secret):
 # x sig1 sig2 ... <number of signatures> pub1 pub2 <number of public keys>
 def coinExchangeScriptSig2(sig_sender, sig_recipient):
     return [
-        OP_0, sig_sender, sig_recipient
+        OP_0, sig_sender, sig_recipient, OP_1
     ]
 ######################################################################
 
@@ -66,7 +66,7 @@ tx_fee = 0.00005 # 0.0001 Change it to be 1/10 of the setting, no sufficient fun
 
 # While testing your code, you can edit these variables to see if your
 # transaction can be broadcasted succesfully.
-broadcast_transactions = True
+broadcast_transactions = False
 alice_redeems = True
 
 ######################################################################
