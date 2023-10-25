@@ -9,12 +9,33 @@ var GENESIS = '0x000000000000000000000000000000000000000000000000000000000000000
 
 // This is the ABI for your contract (get it from Remix, in the 'Compile' tab)
 // ============================================================
-var abi = []; // FIXME: fill this in with your contract's ABI //Be sure to only have one array, not two
+var abi = [
+    {
+      "anonymous": false,
+      "inputs": [
+        {
+          "indexed": false,
+          "internalType": "address",
+          "name": "ad",
+          "type": "address"
+        }
+      ],
+      "name": "NewCall",
+      "type": "event"
+    },
+    {
+      "inputs": [],
+      "name": "printMsgSender",
+      "outputs": [],
+      "stateMutability": "nonpayable",
+      "type": "function"
+    }
+  ]; // FIXME: fill this in with your contract's ABI //Be sure to only have one array, not two
 // ============================================================
 abiDecoder.addABI(abi);
 // call abiDecoder.decodeMethod to use this - see 'getAllFunctionCalls' for more
 
-var contractAddress = ""; // FIXME: fill this in with your contract's address/hash
+var contractAddress = "0xe7f1725E7734CE288F8367e1Bb143E90bb3F0512"; // FIXME: fill this in with your contract's address/hash
 
 var BlockchainSplitwise = new ethers.Contract(contractAddress, abi, provider.getSigner());
 
@@ -74,12 +95,12 @@ async function getAllFunctionCalls(addressOfContract, functionName) {
 				// check that the function getting called in this txn is 'functionName'
 				if (func_call && func_call.name === functionName) {
 					var timeBlock = await provider.getBlock(curBlock);
-		  		var args = func_call.params.map(function (x) {return x.value});
-	  			function_calls.push({
-	  				from: txn.from.toLowerCase(),
-	  				args: args,
-						t: timeBlock.timestamp
-	  			})
+					var args = func_call.params.map(function (x) {return x.value});
+					function_calls.push({
+						from: txn.from.toLowerCase(),
+						args: args,
+							t: timeBlock.timestamp
+					})
 	  		}
 	  	}
 	  }
