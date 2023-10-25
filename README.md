@@ -1,4 +1,4 @@
-# CS-251
+# CS-251 Cryptocurrencies and Blockchain Technologies
 CS 251,  https://cs251.stanford.edu/
 
 Course written assignment retro link
