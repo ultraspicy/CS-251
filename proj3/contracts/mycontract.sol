@@ -15,11 +15,7 @@ contract Splitwise {
      */
     event New_IOU(address from, address to, uint32 amount);
 
-    struct Entry {
-        address creditor;
-        uint32 amount;
-    }
-    mapping (address => Entry[]) balances;
+    mapping (address => mapping (address => uint32)) balances;
 
     /**
      * loop up the the amount debtor owner to credtor 
@@ -33,20 +29,22 @@ contract Splitwise {
      *    - by Splitwise.add_IOU() for the opposite direction 
      */
     function lookup(address debtor, address creditor) public view returns (uint32 ret) {
-        Entry[] memory balance = balances[debtor];
-        if (balance.length == 0) return 0;
-        
-        for (uint i = 0; i < balance.length; i++) {
-            if (balance[i].creditor == creditor) {
-                return balance[i].amount;
-            }
+        return balances[debtor][creditor];
+    }
+
+    function add_IOU_helper(address from, address to, uint32 delta, bool nagative) private {
+        if (nagative) {
+            balances[from][to] = balances[from][to] - delta;
+        } else {
+            balances[from][to] = balances[from][to] + delta;
         }
-        return 0;
+        
     }
 
     function add_IOU(address creditor, uint32 amount, address[] calldata path) public {
+        emit New_IOU(msg.sender, creditor, amount);
         if (path.length == 0) {
-            balances[msg.sender].push(Entry(creditor, amount));
+            add_IOU_helper(msg.sender, creditor, amount, false);
         } else {
             // if client provided a loop of debt, we need to make sure the loop 
             // does exist so we won't wipe out others debt
@@ -63,16 +61,11 @@ contract Splitwise {
                 min = amount;
             }
             for(uint i = 0; i < path.length - 1; i++) {
-                Entry[] storage balance = balances[path[i]];
-                for (uint j = 0; j < balance.length; j++) {
-                    if(balance[j].creditor == path[i + 1]) {
-                        balance[j].amount -= min;
-                    }
-                }
+                add_IOU_helper(path[i], path[i + 1], amount, true);
             }
 
             if (min != amount) {
-                balances[msg.sender].push(Entry(creditor, amount - min));
+                add_IOU_helper(msg.sender, creditor, amount - min, false);
             }
         }
     }

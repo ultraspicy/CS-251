@@ -107,6 +107,7 @@ async function getNeighbors(user) {
 		if(users[i] == user) continue;
 		var owned = await BlockchainSplitwise.lookup(user, users[i]);
 		if  (owned > 0) {
+			console.log("find edge from: " + user + ", to: " + users[i])
 			ret.push(users[i].toLowerCase());
 		}
 	}
@@ -166,16 +167,18 @@ async function getLastActive(user) {
 async function add_IOU(creditor, amount) {
 
 	console.log("==================================================");
-	console.log("creditor " + creditor.toLowerCase());
-	console.log("defaultAccount" + defaultAccount);
+	console.log("add_IOU_from " + defaultAccount);
+	console.log("add_IOU_to " + creditor.toLowerCase());
+	console.log(provider.getSigner())
 	path = await doBFS(creditor.toLowerCase(), defaultAccount.toLowerCase(), getNeighbors);
 
 	if (path == null) {
+		console.log("path is []");
 		await BlockchainSplitwise
 			.connect(provider.getSigner())
 			.add_IOU(creditor, amount, []);
 	} else {
-		console.log(Array.from(path));
+		console.log("path = " + path);
 		await BlockchainSplitwise
 			.connect(provider.getSigner())
 			.add_IOU(creditor, amount, Array.from(path));
@@ -327,16 +330,35 @@ function check(name, condition) {
 	}
 }
 
-// async function sanityCheck2() {
-// 	console.log ("\nTEST", "sanityCheck2");
+async function sanityCheck2() {
+	await sanityCheck()
 
-// 	var accounts = await provider.listAccounts();
-// 	defaultAccount = accounts[0];
+	console.log ("\nTEST", "start sanityCheck2");
+	var score = 0;
+	var accounts = await provider.listAccounts();
+	defaultAccount = accounts[1];
+	
+	console.log("defaultAccount: " + defaultAccount);
 
-// 	await add_IOU(accounts[1], "10");
-// 	users = await getUsers();
-// 	console.log(users);
-// }
+	const privateKey1 = "0x59c6995e998f97a5a0044966f0945389dc9e86dae88c7a8412f4603b6b78690d";
+	const signer1 = new ethers.Wallet(privateKey1);
+	
+	BlockchainSplitwise = new ethers.Contract(contractAddress, abi, signer1);
+	await add_IOU(accounts[2], "20");
+
+	var users = await getUsers();
+	score += check("getUsers() now length 3", users.length === 3);
+
+	var lookup_1_2 = await BlockchainSplitwise.lookup(accounts[1], accounts[2]);
+	console.log("lookup(1, 2) current value " + lookup_1_2);
+	score += check("lookup(1,2) now 20", parseInt(lookup_1_2, 10) === 20);
+
+	// defaultAccount = accounts[2];
+	// await add_IOU(accounts[0], "10");
+
+	// owed = await getTotalOwed(accounts[0]);
+	// score += check("getTotalOwed(0) now 0", owed === 0);
+}
 
 async function sanityCheck() {
 	console.log ("\nTEST", "Simplest possible test: only runs one add_IOU; uses all client functions: lookup, getTotalOwed, getUsers, getLastActive");
@@ -376,4 +398,4 @@ async function sanityCheck() {
 	console.log("Final Score: " + score +"/21");
 }
 
-sanityCheck() //Uncomment this line to run the sanity check when you first open index.html
+sanityCheck2() //Uncomment this line to run the sanity check when you first open index.html
