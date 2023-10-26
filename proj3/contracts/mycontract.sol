@@ -13,7 +13,7 @@ contract Splitwise {
      * Avoid any complex operation such as on-chain BFS
      * instead, move complex logic to client   
      */
-    event NewCall(address ad);
+    event New_IOU(address from, address to, uint32 amount);
 
     struct Entry {
         address creditor;
@@ -44,33 +44,37 @@ contract Splitwise {
         return 0;
     }
 
-    /**
-     * Add owning transaction from msg.send to creditor. 
-     * If reverse is true, creditor resolve credit from msg.sender
-     * @param creditor person who own
-     * @param amount the value of owning 
-     * @param reverse if the transaction is a "reverse transaction"
-     * 
-     * Note that when reverse = true, the amount is the min_value in the loop, 
-     * meaning we will never run into negative debt.
-     * Also note the reverse = true is only used to resolve loop of debt
-     */
-    function add_IOU(address creditor, uint32 amount, bool reverse) public {
-        // TODO add require to prevent malicous use  
-        Entry[] storage balance = balances[msg.sender];
-
-        //step 1: find if they have any unsettled payment/existing entry
-        for (uint i = 0; i < balance.length; i++) {
-            if (balance[i].creditor == creditor) {
-                if (reverse) {
-                    balance[i].amount = balance[i].amount - amount;
-                } else {
-                    balance[i].amount = balance[i].amount + amount;
+    function add_IOU(address creditor, uint32 amount, address[] calldata path) public {
+        if (path.length == 0) {
+            balances[msg.sender].push(Entry(creditor, amount));
+        } else {
+            // if client provided a loop of debt, we need to make sure the loop 
+            // does exist so we won't wipe out others debt
+            uint32 min = 999;
+            for(uint i = 0; i < path.length - 1; i++) {
+                uint32 owned = lookup(path[i], path[i + 1]);
+                require(owned > 0);
+                if (min > owned) {
+                    min = owned;
                 }
             }
-        }
+            // loop exist, then deduct the min from the loop
+            if (min > amount) {
+                min = amount;
+            }
+            for(uint i = 0; i < path.length - 1; i++) {
+                Entry[] storage balance = balances[path[i]];
+                for (uint j = 0; j < balance.length; j++) {
+                    if(balance[j].creditor == path[i + 1]) {
+                        balance[j].amount -= min;
+                    }
+                }
+            }
 
-        // step 2: if not, this is the first transaction from msg.send to creditor
-        balance.push(Entry(creditor, amount));
+            if (min != amount) {
+                balances[msg.sender].push(Entry(creditor, amount - min));
+            }
+        }
     }
+
 }

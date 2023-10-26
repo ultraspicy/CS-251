@@ -2,8 +2,8 @@
   "_format": "hh-sol-cache-2",
   "files": {
     "/Users/jianfeng/Developer/CS-251/proj3/contracts/mycontract.sol": {
-      "lastModificationDate": 1698242951300,
-      "contentHash": "a2b59052146d9ec7247d52ca49cfb2dc",
+      "lastModificationDate": 1698317013071,
+      "contentHash": "f956471273700c7b66fe3b5c5e5867fc",
       "sourceName": "contracts/mycontract.sol",
       "solcConfig": {
         "version": "0.8.17",

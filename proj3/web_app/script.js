@@ -16,18 +16,70 @@ var abi = [
         {
           "indexed": false,
           "internalType": "address",
-          "name": "ad",
+          "name": "from",
           "type": "address"
+        },
+        {
+          "indexed": false,
+          "internalType": "address",
+          "name": "to",
+          "type": "address"
+        },
+        {
+          "indexed": false,
+          "internalType": "uint32",
+          "name": "amount",
+          "type": "uint32"
         }
       ],
-      "name": "NewCall",
+      "name": "New_IOU",
       "type": "event"
     },
     {
-      "inputs": [],
-      "name": "printMsgSender",
+      "inputs": [
+        {
+          "internalType": "address",
+          "name": "creditor",
+          "type": "address"
+        },
+        {
+          "internalType": "uint32",
+          "name": "amount",
+          "type": "uint32"
+        },
+        {
+          "internalType": "address[]",
+          "name": "path",
+          "type": "address[]"
+        }
+      ],
+      "name": "add_IOU",
       "outputs": [],
       "stateMutability": "nonpayable",
+      "type": "function"
+    },
+    {
+      "inputs": [
+        {
+          "internalType": "address",
+          "name": "debtor",
+          "type": "address"
+        },
+        {
+          "internalType": "address",
+          "name": "creditor",
+          "type": "address"
+        }
+      ],
+      "name": "lookup",
+      "outputs": [
+        {
+          "internalType": "uint32",
+          "name": "ret",
+          "type": "uint32"
+        }
+      ],
+      "stateMutability": "view",
       "type": "function"
     }
   ]; // FIXME: fill this in with your contract's ABI //Be sure to only have one array, not two
@@ -35,7 +87,7 @@ var abi = [
 abiDecoder.addABI(abi);
 // call abiDecoder.decodeMethod to use this - see 'getAllFunctionCalls' for more
 
-var contractAddress = "0xe7f1725E7734CE288F8367e1Bb143E90bb3F0512"; // FIXME: fill this in with your contract's address/hash
+var contractAddress = "0x5FbDB2315678afecb367f032d93F642f64180aa3"; // FIXME: fill this in with your contract's address/hash
 
 var BlockchainSplitwise = new ethers.Contract(contractAddress, abi, provider.getSigner());
 
@@ -45,29 +97,89 @@ var BlockchainSplitwise = new ethers.Contract(contractAddress, abi, provider.get
 
 // TODO: Add any helper functions here!
 
-// TODO: Return a list of all users (creditors or debtors) in the system
+// helper function 
+// Get all users that owns postive amount to user
+async function getNeighbors(user) {
+	var ret = [];
+
+	users = await getUsers();
+	for (var i = 0; i < users.length; i++) {
+		if(users[i] == user) continue;
+		var owned = await BlockchainSplitwise.lookup(user, users[i]);
+		if  (owned > 0) {
+			ret.push(users[i].toLowerCase());
+		}
+	}
+	return ret;
+}
+
+// Return a list of all users (creditors or debtors) in the system
 // All users in the system are everyone who has ever sent or received an IOU
+// IMPL: loop through all add_IOU() calls and add (from, to) into a set for dedup
 async function getUsers() {
-
+	calls = await getAllFunctionCalls(contractAddress, "add_IOU");
+	ret = new Set();
+	//console.log(calls);
+	for (let i = 0; i < calls.length; i++) {
+		ret.add(calls[i].from);
+		ret.add(calls[i].creditor.value);
+	}
+	return Array.from(ret);
 }
 
-// TODO: Get the total amount owed by the user specified by 'user'
+// Get the total amount owed by the user specified by 'user'
+// IMPL: loop through all users and accumulate the owned amount
 async function getTotalOwed(user) {
-
+	users = await getUsers();
+	var ret = 0;
+	for (var i = 0; i < users.length; i++) {
+		if(users[i] == user) continue;
+		var owned = await BlockchainSplitwise.lookup(user, users[i]);
+		ret += owned;
+	}
+	return ret;
 }
 
-// TODO: Get the last time this user has sent or received an IOU, in seconds since Jan. 1, 1970
+// Get the last time this user has sent or received an IOU, in seconds since Jan. 1, 1970
 // Return null if you can't find any activity for the user.
 // HINT: Try looking at the way 'getAllFunctionCalls' is written. You can modify it if you'd like.
 async function getLastActive(user) {
-	
+	var ret = 0;
+	calls = await getAllFunctionCalls(contractAddress, "add_IOU");
+	// console.log("==================================================");
+	// console.log(user);
+	for (let i = 0; i < calls.length; i++) {
+		// console.log("calls[i].from " + calls[i].from);
+		// console.log("calls[i].creditor.value " + calls[i].creditor.value);
+		if (calls[i].from.toLowerCase() === user.toLowerCase() || calls[i].creditor.value.toLowerCase() === user.toLowerCase()) {
+			ret = ret > calls[i].t ? ret : calls[i].t;
+			//console.log("latest active timestamp udpated: " + ret);
+		}
+	}
+	//console.log("==================================================");
+	return ret == 0 ? null : ret;
 }
 
-// TODO: add an IOU ('I owe you') to the system
+// add an IOU ('I owe you') to the system
 // The person you owe money is passed as 'creditor'
 // The amount you owe them is passed as 'amount'
 async function add_IOU(creditor, amount) {
-	
+
+	console.log("==================================================");
+	console.log("creditor " + creditor.toLowerCase());
+	console.log("defaultAccount" + defaultAccount);
+	path = await doBFS(creditor.toLowerCase(), defaultAccount.toLowerCase(), getNeighbors);
+
+	if (path == null) {
+		await BlockchainSplitwise
+			.connect(provider.getSigner())
+			.add_IOU(creditor, amount, []);
+	} else {
+		console.log(Array.from(path));
+		await BlockchainSplitwise
+			.connect(provider.getSigner())
+			.add_IOU(creditor, amount, Array.from(path));
+	}
 }
 
 // =============================================================================
@@ -88,18 +200,21 @@ async function getAllFunctionCalls(addressOfContract, functionName) {
 	  	var txn = txns[j];
 
 	  	// check that destination of txn is our contract
-			if(txn.to == null){continue;}
+		if(txn.to == null){continue;}
 	  	if (txn.to.toLowerCase() === addressOfContract.toLowerCase()) {
 	  		var func_call = abiDecoder.decodeMethod(txn.data);
-
+				//console.log(func_call);
 				// check that the function getting called in this txn is 'functionName'
 				if (func_call && func_call.name === functionName) {
 					var timeBlock = await provider.getBlock(curBlock);
 					var args = func_call.params.map(function (x) {return x.value});
+					// console.log("=====================");
+					// console.log(txn);
 					function_calls.push({
 						from: txn.from.toLowerCase(),
+						creditor: func_call.params[0],
 						args: args,
-							t: timeBlock.timestamp
+						t: timeBlock.timestamp
 					})
 	  		}
 	  	}
@@ -212,6 +327,17 @@ function check(name, condition) {
 	}
 }
 
+// async function sanityCheck2() {
+// 	console.log ("\nTEST", "sanityCheck2");
+
+// 	var accounts = await provider.listAccounts();
+// 	defaultAccount = accounts[0];
+
+// 	await add_IOU(accounts[1], "10");
+// 	users = await getUsers();
+// 	console.log(users);
+// }
+
 async function sanityCheck() {
 	console.log ("\nTEST", "Simplest possible test: only runs one add_IOU; uses all client functions: lookup, getTotalOwed, getUsers, getLastActive");
 
@@ -233,6 +359,7 @@ async function sanityCheck() {
 	var response = await add_IOU(accounts[1], "10");
 
 	users = await getUsers();
+	console.log(users);
 	score += check("getUsers() now length 2", users.length === 2);
 
 	owed = await getTotalOwed(accounts[0]);
@@ -249,4 +376,4 @@ async function sanityCheck() {
 	console.log("Final Score: " + score +"/21");
 }
 
-// sanityCheck() //Uncomment this line to run the sanity check when you first open index.html
+sanityCheck() //Uncomment this line to run the sanity check when you first open index.html
