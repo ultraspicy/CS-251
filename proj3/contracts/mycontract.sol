@@ -27,7 +27,6 @@ contract Splitwise {
         } else {
             balances[from][to] = balances[from][to] + delta;
         }
-        
     }
 
     function add_IOU(address creditor, uint32 amount, address[] calldata path) public {

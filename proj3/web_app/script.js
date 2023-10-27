@@ -362,6 +362,15 @@ async function sanityCheck2() {
 	score += check("getTotalOwed(0) now 20", owed === 20);
 	owed = await getTotalOwed(accounts[2]);
 	score += check("getTotalOwed(0) now 20", owed === 20);
+
+	defaultAccount = accounts[0];
+	await add_IOU(accounts[1], "20");
+	owed = await getTotalOwed(accounts[0]);
+	score += check("getTotalOwed(0) now 0", owed === 0);
+	owed = await getTotalOwed(accounts[1]);
+	score += check("getTotalOwed(0) now 0", owed === 0);
+	owed = await getTotalOwed(accounts[2]);
+	score += check("getTotalOwed(0) now 0", owed === 0);
 }
 
 async function sanityCheck() {
