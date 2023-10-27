@@ -96,8 +96,6 @@ var BlockchainSplitwise = new ethers.Contract(contractAddress, abi, provider.get
 // =============================================================================
 
 // TODO: Add any helper functions here!
-
-// helper function 
 // Get all users that owns postive amount to user
 async function getNeighbors(user) {
 	var ret = [];
@@ -107,7 +105,6 @@ async function getNeighbors(user) {
 		if(users[i] == user) continue;
 		var owned = await BlockchainSplitwise.lookup(user, users[i]);
 		if  (owned > 0) {
-			console.log("find edge from: " + user + ", to: " + users[i])
 			ret.push(users[i].toLowerCase());
 		}
 	}
@@ -147,17 +144,12 @@ async function getTotalOwed(user) {
 async function getLastActive(user) {
 	var ret = 0;
 	calls = await getAllFunctionCalls(contractAddress, "add_IOU");
-	// console.log("==================================================");
-	// console.log(user);
 	for (let i = 0; i < calls.length; i++) {
-		// console.log("calls[i].from " + calls[i].from);
-		// console.log("calls[i].creditor.value " + calls[i].creditor.value);
-		if (calls[i].from.toLowerCase() === user.toLowerCase() || calls[i].creditor.value.toLowerCase() === user.toLowerCase()) {
+		if (calls[i].from.toLowerCase() === user.toLowerCase() 
+			|| calls[i].creditor.value.toLowerCase() === user.toLowerCase()) {
 			ret = ret > calls[i].t ? ret : calls[i].t;
-			//console.log("latest active timestamp udpated: " + ret);
 		}
 	}
-	//console.log("==================================================");
 	return ret == 0 ? null : ret;
 }
 
@@ -169,7 +161,7 @@ async function add_IOU(creditor, amount) {
 	console.log("==================================================");
 	console.log("add_IOU_from " + defaultAccount);
 	console.log("add_IOU_to " + creditor.toLowerCase());
-	console.log(provider.getSigner())
+	console.log(provider.getSigner(defaultAccount))
 	path = await doBFS(creditor.toLowerCase(), defaultAccount.toLowerCase(), getNeighbors);
 
 	if (path == null) {
@@ -371,6 +363,30 @@ async function sanityCheck2() {
 	score += check("getTotalOwed(0) now 0", owed === 0);
 	owed = await getTotalOwed(accounts[2]);
 	score += check("getTotalOwed(0) now 0", owed === 0);
+
+	// two node loop
+	defaultAccount = accounts[9];
+	await add_IOU(accounts[10], "99");
+	owed = await getTotalOwed(accounts[9]);
+	score += check("getTotalOwed(0) now 99", owed === 99);
+	defaultAccount = accounts[10];
+	await add_IOU(accounts[9], "99");
+	owed = await getTotalOwed(accounts[9]);
+	score += check("getTotalOwed(0) now 0", owed === 0);
+	owed = await getTotalOwed(accounts[9]);
+	score += check("getTotalOwed(0) now 0", owed === 0);
+
+	// two node loop
+	defaultAccount = accounts[9];
+	await add_IOU(accounts[10], "100");
+	owed = await getTotalOwed(accounts[9]);
+	score += check("getTotalOwed(9) now 100", owed === 100);
+	defaultAccount = accounts[10];
+	await add_IOU(accounts[9], "99");
+	owed = await getTotalOwed(accounts[9]);
+	score += check("getTotalOwed(9) now 1", owed === 1);
+	owed = await getTotalOwed(accounts[10]);
+	score += check("getTotalOwed(10) now 0", owed === 0);
 }
 
 async function sanityCheck() {
@@ -411,4 +427,4 @@ async function sanityCheck() {
 	console.log("Final Score: " + score +"/21");
 }
 
-//sanityCheck2() //Uncomment this line to run the sanity check when you first open index.html
+sanityCheck2() //Uncomment this line to run the sanity check when you first open index.html

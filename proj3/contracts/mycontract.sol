@@ -21,16 +21,30 @@ contract Splitwise {
         return balances[debtor][creditor];
     }
 
-    function add_IOU_helper(address from, address to, uint32 delta, bool nagative) private {
-        if (nagative) {
-            balances[from][to] = balances[from][to] - delta;
-        } else {
-            balances[from][to] = balances[from][to] + delta;
-        }
-    }
-
+    /**
+     * potential malicicious use
+     *  - client provides a loop that doesn't exist. Contract will double check the loop 
+     *    to make sure it won't wipe out other's debt
+     *  - client detects a loop but doesn't tell the contract. Then we still add the IOU
+     *    but without resolving the loop. This would be fine since all owing is preserved
+     *  - client adds IOU to itself, this will abort the transaction since this self-owning
+     *    is not valid. We won't introduce any "self-loop"
+     * Design decision
+     *  - We we should be able to unify the implmentation of loop solving, making implementation
+     *    less verbose. But the current implementation is more gas-efficient
+     *  - All complex computation such as BFS will be done on the client side. To make contract be 
+     *    as gas-efficient as possible, we only do two things 1) data update 2) necessary sanity 
+     *    check against the input
+     * @param creditor the address who i owed 
+     * @param amount  the actual amount
+     * @param path  the potential loop found by the client
+     */
     function add_IOU(address creditor, uint32 amount, address[] calldata path) public {
+        require(msg.sender != creditor);
+        require(amount > 0);
+
         emit New_IOU(msg.sender, creditor, amount);
+        // case 1 - no loop or two-node loop
         if (path.length == 0) {
             uint32 owned = lookup(creditor, msg.sender);
             if (owned == 0) {
@@ -45,6 +59,7 @@ contract Splitwise {
                     balances[creditor][msg.sender] = 0;
                 }
             }
+        // case 2 - loop with # nodes > 2
         } else {
             // if client provided a loop of debt, we need to make sure the loop 
             // does exist so we won't wipe out others debt
@@ -67,6 +82,14 @@ contract Splitwise {
             if (min != amount) {
                 add_IOU_helper(msg.sender, creditor, amount - min, false);
             }
+        }
+    }
+
+    function add_IOU_helper(address from, address to, uint32 delta, bool nagative) private {
+        if (nagative) {
+            balances[from][to] = balances[from][to] - delta;
+        } else {
+            balances[from][to] = balances[from][to] + delta;
         }
     }
 
