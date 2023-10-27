@@ -17,17 +17,6 @@ contract Splitwise {
 
     mapping (address => mapping (address => uint32)) balances;
 
-    /**
-     * loop up the the amount debtor owner to credtor 
-     * @param debtor the address of person who owns
-     * @param creditor the address of person who is owned
-     * 
-     *client action
-     *  - lookup to traverse the graph
-     *  - compute the possible loop of debt
-     *  - resolve the loop of debt by deducting the path_min_val
-     *    - by Splitwise.add_IOU() for the opposite direction 
-     */
     function lookup(address debtor, address creditor) public view returns (uint32 ret) {
         return balances[debtor][creditor];
     }
@@ -44,7 +33,19 @@ contract Splitwise {
     function add_IOU(address creditor, uint32 amount, address[] calldata path) public {
         emit New_IOU(msg.sender, creditor, amount);
         if (path.length == 0) {
-            add_IOU_helper(msg.sender, creditor, amount, false);
+            uint32 owned = lookup(creditor, msg.sender);
+            if (owned == 0) {
+                // no previous debt
+                add_IOU_helper(msg.sender, creditor, amount, false);
+            } else {
+                // two node loop
+                if (owned > amount) {
+                    balances[creditor][msg.sender] -= amount;
+                } else {
+                    balances[msg.sender][creditor] = amount - owned;
+                    balances[creditor][msg.sender] = 0;
+                }
+            }
         } else {
             // if client provided a loop of debt, we need to make sure the loop 
             // does exist so we won't wipe out others debt
@@ -61,7 +62,7 @@ contract Splitwise {
                 min = amount;
             }
             for(uint i = 0; i < path.length - 1; i++) {
-                add_IOU_helper(path[i], path[i + 1], amount, true);
+                add_IOU_helper(path[i], path[i + 1], min, true);
             }
 
             if (min != amount) {

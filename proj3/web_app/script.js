@@ -175,12 +175,12 @@ async function add_IOU(creditor, amount) {
 	if (path == null) {
 		console.log("path is []");
 		await BlockchainSplitwise
-			.connect(provider.getSigner())
+			.connect(provider.getSigner(defaultAccount))
 			.add_IOU(creditor, amount, []);
 	} else {
 		console.log("path = " + path);
 		await BlockchainSplitwise
-			.connect(provider.getSigner())
+			.connect(provider.getSigner(defaultAccount))
 			.add_IOU(creditor, amount, Array.from(path));
 	}
 }
@@ -336,28 +336,32 @@ async function sanityCheck2() {
 	console.log ("\nTEST", "start sanityCheck2");
 	var score = 0;
 	var accounts = await provider.listAccounts();
+
 	defaultAccount = accounts[1];
-	
-	console.log("defaultAccount: " + defaultAccount);
-
-	const privateKey1 = "0x59c6995e998f97a5a0044966f0945389dc9e86dae88c7a8412f4603b6b78690d";
-	const signer1 = new ethers.Wallet(privateKey1);
-	
-	BlockchainSplitwise = new ethers.Contract(contractAddress, abi, signer1);
 	await add_IOU(accounts[2], "20");
-
 	var users = await getUsers();
 	score += check("getUsers() now length 3", users.length === 3);
-
 	var lookup_1_2 = await BlockchainSplitwise.lookup(accounts[1], accounts[2]);
 	console.log("lookup(1, 2) current value " + lookup_1_2);
 	score += check("lookup(1,2) now 20", parseInt(lookup_1_2, 10) === 20);
 
-	// defaultAccount = accounts[2];
-	// await add_IOU(accounts[0], "10");
+	defaultAccount = accounts[2];
+	await add_IOU(accounts[0], "30");
+	owed = await getTotalOwed(accounts[0]);
+	score += check("getTotalOwed(0) now 0", owed === 0);
+	owed = await getTotalOwed(accounts[1]);
+	score += check("getTotalOwed(0) now 10", owed === 10);
+	owed = await getTotalOwed(accounts[2]);
+	score += check("getTotalOwed(0) now 20", owed === 20);
 
-	// owed = await getTotalOwed(accounts[0]);
-	// score += check("getTotalOwed(0) now 0", owed === 0);
+	defaultAccount = accounts[1];
+	await add_IOU(accounts[2], "10");
+	owed = await getTotalOwed(accounts[0]);
+	score += check("getTotalOwed(0) now 0", owed === 0);
+	owed = await getTotalOwed(accounts[1]);
+	score += check("getTotalOwed(0) now 20", owed === 20);
+	owed = await getTotalOwed(accounts[2]);
+	score += check("getTotalOwed(0) now 20", owed === 20);
 }
 
 async function sanityCheck() {
@@ -398,4 +402,4 @@ async function sanityCheck() {
 	console.log("Final Score: " + score +"/21");
 }
 
-sanityCheck2() //Uncomment this line to run the sanity check when you first open index.html
+//sanityCheck2() //Uncomment this line to run the sanity check when you first open index.html
