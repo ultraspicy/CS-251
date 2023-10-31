@@ -15,6 +15,15 @@ contract Splitwise {
      */
     event New_IOU(address from, address to, uint32 amount);
 
+    bool private locked;
+
+    modifier nonReentrant() {
+        require(!locked, "Reentrancy detected");
+        locked = true;
+        _;
+        locked = false;
+    }
+
     mapping (address => mapping (address => uint32)) balances;
 
     function lookup(address debtor, address creditor) public view returns (uint32 ret) {
@@ -35,11 +44,12 @@ contract Splitwise {
      *  - All complex computation such as BFS will be done on the client side. To make contract be 
      *    as gas-efficient as possible, we only do two things 1) data update 2) necessary sanity 
      *    check against the input
+     *  - add nonReentrant modifier
      * @param creditor the address who i owed 
      * @param amount  the actual amount
      * @param path  the potential loop found by the client
      */
-    function add_IOU(address creditor, uint32 amount, address[] calldata path) public {
+    function add_IOU(address creditor, uint32 amount, address[] calldata path) external nonReentrant {
         require(msg.sender != creditor);
         require(amount > 0);
 
