@@ -45,17 +45,17 @@ contract Splitwise {
      *    as gas-efficient as possible, we only do two things 1) data update 2) necessary sanity 
      *    check against the input
      *  - add nonReentrant modifier
-     *  - add check to make sure the creditor is owned more by msg.sender 
-     *    after calling add_IOU()
+     *  - add require to avoid overflow
      * @param creditor the address who i owed 
      * @param amount  the actual amount
      * @param path  the potential loop found by the client
      */
     function add_IOU(address creditor, uint32 amount, address[] calldata path) external nonReentrant {
-        require(msg.sender != creditor);
-        require(amount > 0);
+        require(msg.sender != creditor, "Credit oneself is not allowed");
 
         uint prevIOU = lookup(msg.sender, creditor);
+        require(prevIOU + amount > prevIOU, "Overflow detected");
+
         emit New_IOU(msg.sender, creditor, amount);
         // case 1 - no loop or two-node loop
         if (path.length == 0) {
@@ -96,9 +96,6 @@ contract Splitwise {
                 add_IOU_helper(msg.sender, creditor, amount - min, false);
             }
         }
-
-        uint afterIOU = lookup(msg.sender, creditor);
-        require(prevIOU < afterIOU);
     }
 
     function add_IOU_helper(address from, address to, uint32 delta, bool nagative) private {

@@ -427,4 +427,4 @@ async function sanityCheck() {
 	console.log("Final Score: " + score +"/21");
 }
 
-sanityCheck2() //Uncomment this line to run the sanity check when you first open index.html
+//sanityCheck2() //Uncomment this line to run the sanity check when you first open index.html
