@@ -45,7 +45,7 @@ contract Splitwise {
      *    as gas-efficient as possible, we only do two things 1) data update 2) necessary sanity 
      *    check against the input
      *  - add nonReentrant modifier
-     *  - add require to avoid overflow
+     *  - add require to avoid overflow (not really functional)
      * @param creditor the address who i owed 
      * @param amount  the actual amount
      * @param path  the potential loop found by the client
@@ -53,7 +53,11 @@ contract Splitwise {
     function add_IOU(address creditor, uint32 amount, address[] calldata path) external nonReentrant {
         require(msg.sender != creditor, "Credit oneself is not allowed");
 
-        uint prevIOU = lookup(msg.sender, creditor);
+        uint32 prevIOU = lookup(msg.sender, creditor);
+        require(amount > 0, "Do not issue 0 value transaction");
+        // the following line of code is not really functional in a sense that the overflow is auto
+        // detected by compiler. VM throws expection 
+        // "Arithmetic operation underflowed or overflowed outside of an unchecked block" upon overflow
         require(prevIOU + amount > prevIOU, "Overflow detected");
 
         emit New_IOU(msg.sender, creditor, amount);
