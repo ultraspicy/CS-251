@@ -7,9 +7,10 @@ import "hardhat/console.sol";
 
 
 contract TokenExchange is Ownable {
-    string public exchange_name = '';
+    string public exchange_name = 'cs251swap';
 
-    address tokenAddr = ; // TODO: paste token contract address here
+    // TODO: paste token contract address here
+    address tokenAddr = 0x5FbDB2315678afecb367f032d93F642f64180aa3; 
     Token public token = Token(tokenAddr);                                
 
     // Liquidity pool for the exchange
