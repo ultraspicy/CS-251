@@ -595,24 +595,41 @@ async function getPoolState() {
 /*** ADD LIQUIDITY ***/
 async function addLiquidity(amountEth, maxSlippagePct) {
     /** TODO: ADD YOUR CODE HERE **/
+    return await exchange_contract.
+                    connect(provider.getSigner(defaultAccount)).
+                    addLiquidity({ value: ethers.utils.parseEther(amountEth)});
 }
 
 /*** REMOVE LIQUIDITY ***/
 async function removeLiquidity(amountEth, maxSlippagePct) {
     /** TODO: ADD YOUR CODE HERE **/
+    return await exchange_contract.
+                    connect(provider.getSigner(defaultAccount)).
+                    removeLiquidity(ethers.utils.parseEther(amountEth));
 }
 
 async function removeAllLiquidity(maxSlippagePct) {
     /** TODO: ADD YOUR CODE HERE **/
+    return await exchange_contract.
+                    connect(provider.getSigner(defaultAccount)).
+                    removeAllLiquidity();
 }
 
 /*** SWAP ***/
 async function swapTokensForETH(amountToken, maxSlippagePct) {
     /** TODO: ADD YOUR CODE HERE **/
+    //decimal = token_contract.connect(provider.getSigner(defaultAccount)).decimals();
+    console.log("amountToken = " + amountToken + " maxSlippagePct = " + maxSlippagePct);
+    return await exchange_contract.
+                    connect(provider.getSigner(defaultAccount)).
+                    swapTokensForETH(amountToken);
 }
 
 async function swapETHForTokens(amountEth, maxSlippagePct) {
     /** TODO: ADD YOUR CODE HERE **/
+    return await exchange_contract.
+                    connect(provider.getSigner(defaultAccount)).
+                    swapETHForTokens({value: ethers.utils.parseEther(amountEth)});
 }
 
 // =============================================================================
@@ -713,12 +730,24 @@ function check(name, swap_rate, condition) {
 }
 
 
+
+// const approveAccounts = async function() {
+//   var accounts = await provider.listAccounts();
+//   for(i = 0; i < 20; i++) {
+//     await token_contract.connect(provider.getSigner(accounts[i])).approve(exchange_address, 100000);
+//     //console.log("approve for " + accounts[i]);
+//   }
+// }
+
 const sanityCheck = async function() {
     var swap_fee = await exchange_contract.connect(provider.getSigner(defaultAccount)).getSwapFee();
     console.log("Beginning Sanity Check.");
+    //approveAccounts();
 
     var accounts = await provider.listAccounts();
     defaultAccount = accounts[1];
+    // approve 100000 allowance 
+    await token_contract.connect(provider.getSigner(accounts[1])).approve(exchange_address, 100000);
     var score = 0;
     var start_state = await getPoolState();
     console.log(`Start state ${start_state}`)
@@ -727,7 +756,7 @@ const sanityCheck = async function() {
     // No liquidity provider rewards implemented yet
     if (Number(swap_fee[0]) == 0) {
         await swapETHForTokens("100", "1");
-        var state1 = await getPoolState();=
+        var state1 = await getPoolState();
         var expected_tokens_received = 100 * start_state.token_eth_rate;
         var user_tokens1 = await token_contract.connect(provider.getSigner(defaultAccount)).balanceOf(defaultAccount);
         score += check("Testing simple exchange of ETH to token", swap_fee[0],
@@ -739,8 +768,17 @@ const sanityCheck = async function() {
         var state2 = await getPoolState();
         var expected_eth_received = 90 * state1.eth_token_rate;
         var user_tokens2 = await token_contract.connect(provider.getSigner(defaultAccount)).balanceOf(defaultAccount);
+        // console.log("user_tokens2 = " + user_tokens2)
+        // console.log("user_tokens1 = " + user_tokens1)
+        // console.log("state2.token_liquidity = " + state2.token_liquidity)
+        // console.log("state1.token_liquidity = " + state1.token_liquidity)
+        // console.log("state1.eth_liquidity = " + state1.eth_liquidity)
+        // console.log("expected_eth_received = " + expected_eth_received)
+        // console.log("state2.eth_liquidity = " + state2.eth_liquidity)
+        
         score += check("Test simple exchange of token to ETH", swap_fee[0], 
           state2.token_liquidity === (state1.token_liquidity + 90) && 
+          //Math.abs((state1.eth_liquidity - expected_eth_received) - state2.eth_liquidity) < 6 &&
           Math.abs((state1.eth_liquidity - expected_eth_received) - state2.eth_liquidity) < 5 &&
           Number(user_tokens2) === (Number(user_tokens1) - 90));
         
@@ -752,6 +790,13 @@ const sanityCheck = async function() {
         var expected_tokens_added = 100 * state2.token_eth_rate;
         var state3 = await getPoolState();
         var user_tokens3 = await token_contract.connect(provider.getSigner(defaultAccount)).balanceOf(defaultAccount);
+        // console.log("state3.eth_liquidity = " + state3.eth_liquidity)
+        // console.log("state2.eth_liquidity = " + state2.eth_liquidity)
+        // console.log("state3.token_liquidity = " + state3.token_liquidity)
+        // console.log("state2.token_liquidity = " + state2.token_liquidity)
+        // console.log("expected_tokens_added = " + expected_tokens_added)
+        // console.log("Number(user_tokens3) = " + Number(user_tokens3))
+        // console.log("Number(user_tokens2) = " + Number(user_tokens2))
         score += check("Test adding liquidity", swap_fee[0], 
           state3.eth_liquidity === (state2.eth_liquidity + 100) &&
           Math.abs(state3.token_liquidity - (state2.token_liquidity + expected_tokens_added)) < 5 &&
@@ -761,6 +806,13 @@ const sanityCheck = async function() {
         var expected_tokens_removed = 10 * state3.token_eth_rate;
         var state4 = await getPoolState();
         var user_tokens4 = await token_contract.connect(provider.getSigner(defaultAccount)).balanceOf(defaultAccount);
+        // console.log("state4.eth_liquidity = " + state4.eth_liquidity)
+        // console.log("state3.eth_liquidity = " + state3.eth_liquidity)
+        // console.log("state4.token_liquidity = " + state4.token_liquidity)
+        // console.log("state3.token_liquidity = " + state3.token_liquidity)
+        // console.log("expected_tokens_removed = " + expected_tokens_removed)
+        // console.log("Number(user_tokens4) = " + Number(user_tokens4))
+        // console.log("Number(user_tokens3) = " + Number(user_tokens3))
         score += check("Test removing liquidity", swap_fee[0], 
           state4.eth_liquidity === (state3.eth_liquidity - 10) &&
           Math.abs(state4.token_liquidity - (state3.token_liquidity - expected_tokens_removed)) < 5 &&
@@ -770,8 +822,17 @@ const sanityCheck = async function() {
         expected_tokens_removed = 90 * state4.token_eth_rate;
         var state5 = await getPoolState();
         var user_tokens5 = await token_contract.connect(provider.getSigner(defaultAccount)).balanceOf(defaultAccount);
+        // console.log("state5.eth_liquidity = " + state5.eth_liquidity)
+        // console.log("state4.eth_liquidity = " + state4.eth_liquidity)
+        // console.log("state5.token_liquidity = " + state5.token_liquidity)
+        // console.log("state4.token_liquidity = " + state4.token_liquidity)
+        // console.log("expected_tokens_removed = " + expected_tokens_removed)
+        // console.log("Number(user_tokens5) = " + Number(user_tokens5))
+        // console.log("Number(user_tokens4) = " + Number(user_tokens4))
         score += check("Test removing all liquidity", swap_fee[0], 
           state5.eth_liquidity - (state4.eth_liquidity - 90) < 5 && 
+          // Math.abs(state5.token_liquidity - (state4.token_liquidity - expected_tokens_removed)) < 10 &&
+          // Math.abs(Number(user_tokens5) - (Number(user_tokens4) + expected_tokens_removed)) < 10); 
           Math.abs(state5.token_liquidity - (state4.token_liquidity - expected_tokens_removed)) < 5 &&
           Math.abs(Number(user_tokens5) - (Number(user_tokens4) + expected_tokens_removed)) < 5); 
     }
@@ -847,6 +908,6 @@ const sanityCheck = async function() {
 // Sleep 10s to ensure init() finishes before sanityCheck() runs on first load.
 // If you run into sanityCheck() errors due to init() not finishing, please extend the sleep time.
 
-// setTimeout(function () {
-//   sanityCheck();
-// }, 10000);
+setTimeout(function () {
+  sanityCheck();
+}, 5000);

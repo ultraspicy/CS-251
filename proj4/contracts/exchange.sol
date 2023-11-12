@@ -31,7 +31,7 @@ contract TokenExchange is Ownable {
     uint private total_shares = 0;
 
     // liquidity rewards
-    uint private swap_fee_numerator = 3;                
+    uint private swap_fee_numerator = 0;                
     uint private swap_fee_denominator = 100;
 
     // Constant: x * y = k
@@ -39,6 +39,8 @@ contract TokenExchange is Ownable {
 
     // For use with exchange rates
     uint private multiplier = 10**5;
+
+    event SwapTokensForETHEvent(uint message);
 
     constructor() {}
     
@@ -60,7 +62,11 @@ contract TokenExchange is Ownable {
 
         // require nonzero values were sent
         require (msg.value > 0, "Need eth to create pool.");
+        console.log("createPool");
+        console.log(msg.value);
         uint tokenSupply = token.balanceOf(msg.sender);
+        console.log(tokenSupply);
+        console.log(amountTokens);
         require(amountTokens <= tokenSupply, "Not have enough tokens to create the pool");
         require (amountTokens > 0, "Need tokens to create pool.");
 
@@ -102,6 +108,21 @@ contract TokenExchange is Ownable {
         payable
     {
         /******* TODO: Implement this function *******/
+        // transfer the token into this account
+        uint token_to_add =  msg.value * token_reserves / eth_reserves;
+        uint tokenRemainingBalance = token.balanceOf(msg.sender);
+        require(token_to_add <= tokenRemainingBalance, "Remaining balance of the send is not enough to provide the liquidity");
+        bool transfer = token.transferFrom(msg.sender, address(this), token_to_add);
+        assert(transfer);
+        // step 2: update state variables of the contract 
+        // aka token_reserves, eth_reserves, lps, total_shares and k
+        token_reserves = token_to_add + token_reserves;
+        eth_reserves = msg.value + eth_reserves;
+        uint new_share = total_shares * msg.value / eth_reserves;
+        uint old_share = lps[msg.sender];
+        lps[msg.sender] = old_share + new_share;
+        total_shares = total_shares + new_share;
+        k = (token_to_add + token_reserves) * (msg.value + eth_reserves);
     }
 
 
@@ -112,6 +133,26 @@ contract TokenExchange is Ownable {
         payable
     {
         /******* TODO: Implement this function *******/
+        // step1: make sure user didn't excessively withdraw
+        uint shares = lps[msg.sender];
+        console.log("====== removeLiquidity ========");
+        console.log(amountETH);
+        console.log(eth_reserves * shares / total_shares);
+        require(amountETH <= eth_reserves * shares / total_shares, "user doesn't have enough shares of pool to removeLiquidity");
+        // step2: transfer eth and token back to user
+        uint amountToken = amountETH * token_reserves / eth_reserves;
+        bool transfer = token.transfer(msg.sender, amountToken);
+        assert(transfer);
+        payable(msg.sender).transfer(amountETH);
+        // step3: update state variables
+        token_reserves = token_reserves - amountToken;
+        eth_reserves = eth_reserves - amountETH;
+        uint share_to_remove = total_shares * amountETH / eth_reserves;
+        console.log(lps[msg.sender]);
+        console.log(share_to_remove);
+        lps[msg.sender] = lps[msg.sender] - share_to_remove;
+        total_shares = total_shares - share_to_remove;
+        k = (token_reserves - amountToken) * (eth_reserves - amountETH);
     }
 
     // Function removeAllLiquidity: Removes all liquidity that msg.sender is entitled to withdraw
@@ -121,6 +162,19 @@ contract TokenExchange is Ownable {
         payable
     {
         /******* TODO: Implement this function *******/
+        // step1: transfer eth and token back to user
+        uint shares = lps[msg.sender];
+        uint ethAmount = eth_reserves * shares / total_shares;
+        uint tokenAmount = token_reserves * shares / total_shares;
+        bool transfer = token.transfer(msg.sender, tokenAmount);
+        assert(transfer);
+        payable(msg.sender).transfer(ethAmount);
+        // step3: update state variables
+        token_reserves = token_reserves - tokenAmount;
+        eth_reserves = eth_reserves - ethAmount;
+        total_shares = total_shares - lps[msg.sender];
+        lps[msg.sender] = 0;
+        k = (token_reserves - tokenAmount) * (eth_reserves - ethAmount);
     }
     /***  Define additional functions for liquidity fees here as needed ***/
 
@@ -134,6 +188,25 @@ contract TokenExchange is Ownable {
         payable
     {
         /******* TODO: Implement this function *******/
+        // step1: take token from user and transfer eth back to user
+        uint amountETH = amountTokens * eth_reserves / (token_reserves + amountTokens);
+        console.log("amountETH = ");
+        console.log(amountETH);
+        console.log("amountTokens = ");
+        console.log(amountTokens);
+        uint allowance = token.allowance(msg.sender, address(this));
+        console.log("allowance = ");
+        console.log(allowance);
+        bool tranfer = token.transferFrom(msg.sender, address(this), amountTokens);
+        assert(tranfer);
+        console.log("pool balance = ");
+        console.log(token.balanceOf(address(this)));
+        console.log("msg.sender balance = ");
+        console.log(token.balanceOf(msg.sender));
+        payable(msg.sender).transfer(amountETH);
+        // step2: update pool state variables 
+        token_reserves = token_reserves + amountTokens;
+        eth_reserves = eth_reserves - amountETH;
     }
 
 
@@ -146,5 +219,12 @@ contract TokenExchange is Ownable {
         payable 
     {
         /******* TODO: Implement this function *******/
+        // step1: take eth from user and transfer token back to user
+        uint amountToken = msg.value * token_reserves / (eth_reserves + msg.value);
+        bool transfer = token.transfer(msg.sender, amountToken);
+        assert(transfer);
+        // step2: update pool state variables 
+        token_reserves = token_reserves - amountToken;
+        eth_reserves = eth_reserves - msg.value;
     }
 }

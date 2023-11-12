@@ -37,8 +37,8 @@
       ]
     },
     "/Users/jianfeng/Developer/CS-251/proj4/contracts/exchange.sol": {
-      "lastModificationDate": 1699742796958,
-      "contentHash": "1575aedab6ebadd12e96874acd9e4b92",
+      "lastModificationDate": 1699786160536,
+      "contentHash": "20c8ec3a09be76709a24570b78b29788",
       "sourceName": "contracts/exchange.sol",
       "solcConfig": {
         "version": "0.8.17",
@@ -75,7 +75,7 @@
       ]
     },
     "/Users/jianfeng/Developer/CS-251/proj4/contracts/token.sol": {
-      "lastModificationDate": 1699742145875,
+      "lastModificationDate": 1699777511638,
       "contentHash": "41531d75a67872982dc0f80894881aaa",
       "sourceName": "contracts/token.sol",
       "solcConfig": {
