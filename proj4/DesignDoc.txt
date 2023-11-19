@@ -17,28 +17,35 @@ Group: Jianfeng Guo & Robert Dowling
 2. Explain your scheme for rewarding liquidity providers and justify the design decisions you made. How does it satisfy the liquidity rewards requirements outlined in Section 7?
 
 
-# TODO: answer question 2 here
+The main problem of share based fee distribution is that some user can contribute and acquire a great portion of fee reserve. By
+the moment of withdraw, that user can unfairly take a great portion of the fee reserve even though its provided liquidity doesn't 
+involve in a lot of swaps.
+
+To compensate this, we need to distribute fee in real-time, aka every time a swap happens, the fee is distibuted.
+We use two mappings to record such distribution, and when user withdraw its liquidity, he just withdraw its portion of total fee reserve for itself.
 
 
 3. Describe at least one method you used to minimize your exchange contract's gas usage. Why was this method effective?
 
 
-# TODO: answer question 3 here
+Only do essential computation such as token transfer, token exchange computation, fee distribution etc. We handle over the 
+computation of slippage to client and let client to tell us the range for swap.
 
 
 4. Optional Feedback:
 4a. How much time did you spend on the assignment?
 
-# TODO: answer question 4(a) here
+Jianfeng - From 16h to 20h including reading proj4.pdf, watching section, implementing code and team meeting
 
 4b. What is one thing that would have been useful to know before starting the assignment?
 
-# TODO: answer question 4(b) here
+Jianfeng - Gordan did a great job to help us avoid some common pitfalls.
 
 4c. If you could change one with about this assignment, what would you change?
 
-# TODO: answer question 4(c) here
+Jianfeng - test cases can be improved, for example, print out the value and range instead of just a true/false.
+Jianfeng - I think the fee distribution is essential and is the most tricky part of this project. Maybe it should not be extra credit
 
 4d. Please feel free to include any other feedback you may have below.
 
-# TODO: answer question 4(d) here
+Jianfeng - Nothing to mention, great course, great assignments(maybe a little more challenging and weight more on the final score).

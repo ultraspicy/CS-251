@@ -660,11 +660,11 @@ async function addLiquidity(amountEth, maxSlippagePct) {
     poolState = await getPoolState();
     max_ex_rate = Math.round(exchange_rate_multiplier * poolState['token_eth_rate'] * (Number(maxSlippagePct) / 100 + 1));
     min_ex_rate = Math.round(exchange_rate_multiplier * poolState['token_eth_rate'] * (1 - Number(maxSlippagePct) / 100));
-    console.log("============================");
-    console.log("token_eth_rate = " + poolState['token_eth_rate']);
-    console.log("max_ex_rate = " + max_ex_rate);
-    console.log("min_ex_rate = " + min_ex_rate);
-    console.log("============================");
+    // console.log("============================");
+    // console.log("token_eth_rate = " + poolState['token_eth_rate']);
+    // console.log("max_ex_rate = " + max_ex_rate);
+    // console.log("min_ex_rate = " + min_ex_rate);
+    // console.log("============================");
     return await exchange_contract.
                     connect(provider.getSigner(defaultAccount)).
                     addLiquidity(max_ex_rate, min_ex_rate, {value: ethers.utils.parseEther(amountEth)});
@@ -694,10 +694,10 @@ async function removeAllLiquidity(maxSlippagePct) {
 /*** SWAP ***/
 async function swapTokensForETH(amountToken, maxSlippagePct) {
     /** TODO: ADD YOUR CODE HERE **/
-    console.log("amountToken = " + amountToken + " maxSlippagePct = " + maxSlippagePct);
+    //console.log("amountToken = " + amountToken + " maxSlippagePct = " + maxSlippagePct);
     poolState = await getPoolState();
     max_ex_rate = Math.round(10 ** 5 * poolState['token_eth_rate'] * (Number(maxSlippagePct) / 100 + 1));
-    console.log("swapTokensForETH max_ex_rate = " + max_ex_rate + "  pool_state = " + poolState['token_eth_rate']);
+    //console.log("swapTokensForETH max_ex_rate = " + max_ex_rate + "  pool_state = " + poolState['token_eth_rate']);
     return await exchange_contract.
                     connect(provider.getSigner(defaultAccount)).
                     swapTokensForETH(amountToken, max_ex_rate);
@@ -707,7 +707,7 @@ async function swapETHForTokens(amountEth, maxSlippagePct) {
     /** TODO: ADD YOUR CODE HERE **/
     poolState = await getPoolState();
     max_ex_rate = Math.round(10 ** 5 * poolState['eth_token_rate'] * (Number(maxSlippagePct) / 100 + 1));
-    console.log("swapETHForTokens max_ex_rate = " + max_ex_rate + "  pool_state = " + poolState['token_eth_rate']);
+    //console.log("swapETHForTokens max_ex_rate = " + max_ex_rate + "  pool_state = " + poolState['token_eth_rate']);
     return await exchange_contract.
                     connect(provider.getSigner(defaultAccount)).
                     swapETHForTokens(max_ex_rate, {value: ethers.utils.parseEther(amountEth)});
@@ -933,12 +933,12 @@ const sanityCheck = async function() {
           Math.abs((start_state.token_liquidity - expected_tokens_received) - state1.token_liquidity) < 5 &&
           (state1.eth_liquidity - start_state.eth_liquidity) === 100 &&
           Math.abs(Number(start_tokens) + expected_tokens_received - Number(user_tokens1)) < 5);
-        console.log("expected_tokens_received = " + expected_tokens_received);    
-        console.log("state1.token_liquidity = " + state1.token_liquidity)
-        console.log("state1.eth_liquidity = " + state1.eth_liquidity)
-        console.log("start_state.eth_liquidity = " + start_state.eth_liquidity)
-        console.log("user_tokens1 " + user_tokens1);
-        console.log("============================================");
+        // console.log("expected_tokens_received = " + expected_tokens_received);    
+        // console.log("state1.token_liquidity = " + state1.token_liquidity)
+        // console.log("state1.eth_liquidity = " + state1.eth_liquidity)
+        // console.log("start_state.eth_liquidity = " + start_state.eth_liquidity)
+        // console.log("user_tokens1 " + user_tokens1);
+        // console.log("============================================");
 
         await swapTokensForETH("90", "1");
         var state2 = await getPoolState();
@@ -948,11 +948,11 @@ const sanityCheck = async function() {
           state2.token_liquidity === (state1.token_liquidity + 90) && 
           Math.abs((state1.eth_liquidity - expected_eth_received) - state2.eth_liquidity) < 5 &&
           Number(user_tokens2) === (Number(user_tokens1) - 90));
-        console.log("expected_tokens_received = " + expected_tokens_received); 
-        console.log("state2.token_liquidity = " + state2.token_liquidity)
-        console.log("state2.eth_liquidity = " + state2.eth_liquidity)
-        console.log("user_tokens2 " + user_tokens2);
-        console.log("============================================");
+        // console.log("expected_tokens_received = " + expected_tokens_received); 
+        // console.log("state2.token_liquidity = " + state2.token_liquidity)
+        // console.log("state2.eth_liquidity = " + state2.eth_liquidity)
+        // console.log("user_tokens2 " + user_tokens2);
+        // console.log("============================================");
 
         defaultAccount = accounts[0];
         var state2 = await getPoolState();

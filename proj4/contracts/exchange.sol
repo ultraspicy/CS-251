@@ -5,8 +5,12 @@ pragma solidity ^0.8.0;
 import './token.sol';
 import "hardhat/console.sol";
 
-// todo 1) at least 1 token, at least 1 eth
-//
+// todo 
+// 1) add check in swap contract that ensure there is at least 1 token and at least 1 eth 
+// 2) implement extra credit - the correct fee distribution 
+// 3) in exchage.js, write test cases that test the slipage can block the transaction
+// 4) in exchange.js, write test case that verify the fee distribution 
+//         - when user suddenly has a great share of pool, but no swap happens , then no fee
 contract TokenExchange is Ownable {
     string public exchange_name = 'cs251swap';
     bool private locked;
@@ -257,8 +261,6 @@ contract TokenExchange is Ownable {
         eth_reserves = eth_reserves - amountETH;
         token_fee_reserves = token_fee_reserves + fee_reserve;
     }
-
-
 
     // Function swapETHForTokens: Swaps ETH for your tokens
     // ETH is sent to contract as msg.value
