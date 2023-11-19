@@ -5,7 +5,8 @@ pragma solidity ^0.8.0;
 import './token.sol';
 import "hardhat/console.sol";
 
-
+// todo 1) at least 1 token, at least 1 eth
+//
 contract TokenExchange is Ownable {
     string public exchange_name = 'cs251swap';
     bool private locked;
@@ -32,7 +33,7 @@ contract TokenExchange is Ownable {
     uint private total_shares = 0;
 
     // liquidity rewards
-    uint private swap_fee_numerator = 0;                
+    uint private swap_fee_numerator = 3;                
     uint private swap_fee_denominator = 100;
 
     // Constant: x * y = k
@@ -46,6 +47,11 @@ contract TokenExchange is Ownable {
     // modifier to limit the exchange rate
     modifier exchangeRateWithIn (uint max, uint min) {
         uint cur = TokenOverEthRate();
+        console.log("===========================================================");
+        console.log(cur);
+        console.log(max);
+        console.log(min);
+        console.log("===========================================================");
         require(cur < max, "exchange rate too high");
         require(cur > min, "exchange rate too low");
         _;
@@ -160,14 +166,22 @@ contract TokenExchange is Ownable {
         console.log(amountETH);
         console.log(eth_reserves * shares / total_shares);
         require(amountETH <= eth_reserves * shares / total_shares, "user doesn't have enough shares of pool to removeLiquidity");
-        // step2: transfer eth and token back to user
+        // step2.a: from token(eth)_reserve, transfer eth and token back to user
         uint amountToken = amountETH * token_reserves / eth_reserves;
         bool transfer = token.transfer(msg.sender, amountToken);
         assert(transfer);
         payable(msg.sender).transfer(amountETH);
+        // step2.b: from fee_reserve, transfer eth and token back to user
+        uint ethReward = eth_fee_reserves * amountETH / eth_reserves;
+        uint tokenReward = token_fee_reserves * amountETH / eth_reserves;
+        bool rewardTransfer = token.transfer(msg.sender, tokenReward);
+        assert(rewardTransfer);
+        payable(msg.sender).transfer(ethReward);
         // step3: update state variables
         token_reserves = token_reserves - amountToken;
         eth_reserves = eth_reserves - amountETH;
+        token_fee_reserves = token_fee_reserves - tokenReward;
+        eth_fee_reserves = eth_fee_reserves - ethReward;
         uint share_to_remove = total_shares * amountETH / eth_reserves;
         console.log(lps[msg.sender]);
         console.log(share_to_remove);
@@ -185,13 +199,19 @@ contract TokenExchange is Ownable {
         nonReentrant
     {
         /******* TODO: Implement this function *******/
-        // step1: transfer eth and token back to user
+        // step1.a: from token(eth)_reserve, transfer eth and token back to user
         uint shares = lps[msg.sender];
         uint ethAmount = eth_reserves * shares / total_shares;
         uint tokenAmount = token_reserves * shares / total_shares;
         bool transfer = token.transfer(msg.sender, tokenAmount);
         assert(transfer);
         payable(msg.sender).transfer(ethAmount);
+        // step1.b: from fee_reserve, transfer eth and token back to user
+        uint ethRewardAmount = eth_fee_reserves * shares / total_shares;
+        uint tokenRewardAmount = token_fee_reserves * shares / total_shares;
+        bool rewardTran = token.transfer(msg.sender, tokenRewardAmount);
+        assert(rewardTran);
+        payable(msg.sender).transfer(ethRewardAmount);
         // step2: update state variables
         token_reserves = token_reserves - tokenAmount;
         eth_reserves = eth_reserves - ethAmount;
@@ -214,36 +234,28 @@ contract TokenExchange is Ownable {
         /******* TODO: Implement this function *******/
         // step0: 
         uint rate = TokenOverEthRate();
-        console.log("rate = ");
-        console.log(rate);
-        console.log("max_exchange_rate =");
-        console.log(max_exchange_rate);
+        // console.log("rate = ");
+        // console.log(rate);
+        // console.log("max_exchange_rate =");
+        // console.log(max_exchange_rate);
         require(rate < max_exchange_rate, "Eth price has increased significantly. Slippage aborts the transaction");
-
-        // console.log("token_reserves =");
-        // console.log(token_reserves);
-        // console.log("amountTokens = ");
-        // console.log(amountTokens);
-        // console.log("eth_reserves =");
-        // console.log(eth_reserves);
-        // step1: take token from user and transfer eth back to user
-        uint amountETH = amountTokens * eth_reserves / (token_reserves + amountTokens);
-        // console.log("amountETH = ");
-        // console.log(amountETH);
-        
-        //uint allowance = token.allowance(msg.sender, address(this));
-        // console.log("allowance = ");
-        // console.log(allowance);
+        // step1: token will be split into regular_reserve and fee_reserve
+        uint phiX = amountTokens * numerator() / swap_fee_denominator;
+        uint fee_reserve = amountTokens - phiX;
+        uint amountETH = phiX * eth_reserves / (token_reserves + phiX);
         bool tranfer = token.transferFrom(msg.sender, address(this), amountTokens);
         assert(tranfer);
-        // console.log("pool balance = ");
-        // console.log(token.balanceOf(address(this)));
-        // console.log("msg.sender balance = ");
-        // console.log(token.balanceOf(msg.sender));
         payable(msg.sender).transfer(amountETH);
+        console.log("phiX");
+        console.log(phiX);
+        console.log("fee_reserve");
+        console.log(fee_reserve);
+        console.log("amountETH");
+        console.log(amountETH);
         // step2: update pool state variables 
-        token_reserves = token_reserves + amountTokens;
+        token_reserves = token_reserves + phiX;
         eth_reserves = eth_reserves - amountETH;
+        token_fee_reserves = token_fee_reserves + fee_reserve;
     }
 
 
@@ -259,18 +271,22 @@ contract TokenExchange is Ownable {
         /******* TODO: Implement this function *******/
         // step0: compute exchange rate 
         uint rate = EthOverTokenRate();
-        console.log("rate = ");
-        console.log(rate);
-        console.log("max_exchange_rate =");
-        console.log(max_exchange_rate);
+        // console.log("rate = ");
+        // console.log(rate);
+        // console.log("max_exchange_rate =");
+        // console.log(max_exchange_rate);
         require(rate < max_exchange_rate, "token price has increased significantly. Slippage aborts the transaction");
-        // step1: take eth from user and transfer token back to user
-        uint amountToken = msg.value * token_reserves / (eth_reserves + msg.value);
+        // step1: msg.value will be split into regular_reserve and fee_reserve
+        uint phiX = msg.value * numerator() / swap_fee_denominator;
+        uint fee_reserve =  msg.value - phiX;
+        // take eth from user and transfer token back to user
+        uint amountToken = phiX * token_reserves / (eth_reserves + phiX);
         bool transfer = token.transfer(msg.sender, amountToken);
         assert(transfer);
         // step2: update pool state variables 
         token_reserves = token_reserves - amountToken;
-        eth_reserves = eth_reserves + msg.value;
+        eth_reserves = eth_reserves + phiX;
+        eth_fee_reserves = eth_fee_reserves + fee_reserve;
     }
 
     function EthOverTokenRate() internal view returns (uint256) {
@@ -279,5 +295,9 @@ contract TokenExchange is Ownable {
 
     function TokenOverEthRate() internal view returns (uint256) {
         return multiplier * token_reserves * (10 ** 18) / eth_reserves; 
+    }
+
+    function numerator() internal view returns (uint256) {
+        return swap_fee_denominator - swap_fee_numerator;
     }
 }
