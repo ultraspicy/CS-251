@@ -4,11 +4,14 @@
 // ========================================================= //  
 
 # TODO: Remove this line and add your group names above
+Group: Jianfeng Guo & Robert Dowling 
 
 1. Explain why adding and removing liquidity to your exchange does not change the exchange rate.
 
 
-# TODO: answer question 1 here
+ function signature addLiquidity(amountEth, maxSlippagePct) and removeLiquidity(amountEth, maxSlippagePct) 
+ use amountEth as input, and in exchange contract we derive the value of token from amountEth such that the 
+ ratio of new_eth/eth_reserve equals the ratio of new_token/token_reserve.
 
 
 2. Explain your scheme for rewarding liquidity providers and justify the design decisions you made. How does it satisfy the liquidity rewards requirements outlined in Section 7?

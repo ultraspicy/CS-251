@@ -8,6 +8,7 @@ import "hardhat/console.sol";
 
 contract TokenExchange is Ownable {
     string public exchange_name = 'cs251swap';
+    bool private locked;
 
     // TODO: paste token contract address here
     address tokenAddr = 0x5FbDB2315678afecb367f032d93F642f64180aa3; 
@@ -41,6 +42,22 @@ contract TokenExchange is Ownable {
     uint private multiplier = 10**5;
 
     event SwapTokensForETHEvent(uint message);
+
+    // modifier to limit the exchange rate
+    modifier exchangeRateWithIn (uint max, uint min) {
+        uint cur = TokenOverEthRate();
+        require(cur < max, "exchange rate too high");
+        require(cur > min, "exchange rate too low");
+        _;
+    }
+
+    // non reentrancy 
+    modifier nonReentrant() {
+        require(!locked, "Reentrancy detected");
+        locked = true;
+        _;
+        locked = false;
+    }
 
     constructor() {}
     
@@ -103,10 +120,12 @@ contract TokenExchange is Ownable {
 
     // Function addLiquidity: Adds liquidity given a supply of ETH (sent to the contract as msg.value).
     // You can change the inputs, or the scope of your function, as needed.
-    function addLiquidity() 
+    function addLiquidity(uint max_token_eth_ex_rate, uint min_token_eth_ex_rate) 
         external 
         payable
-    {
+        exchangeRateWithIn(max_token_eth_ex_rate, min_token_eth_ex_rate)
+        nonReentrant
+    {   
         /******* TODO: Implement this function *******/
         // transfer the token into this account
         uint token_to_add =  msg.value * token_reserves / eth_reserves;
@@ -128,9 +147,11 @@ contract TokenExchange is Ownable {
 
     // Function removeLiquidity: Removes liquidity given the desired amount of ETH to remove.
     // You can change the inputs, or the scope of your function, as needed.
-    function removeLiquidity(uint amountETH)
+    function removeLiquidity(uint amountETH, uint max_token_eth_ex_rate, uint min_token_eth_ex_rate)
         public 
         payable
+        exchangeRateWithIn(max_token_eth_ex_rate, min_token_eth_ex_rate)
+        nonReentrant
     {
         /******* TODO: Implement this function *******/
         // step1: make sure user didn't excessively withdraw
@@ -157,9 +178,11 @@ contract TokenExchange is Ownable {
 
     // Function removeAllLiquidity: Removes all liquidity that msg.sender is entitled to withdraw
     // You can change the inputs, or the scope of your function, as needed.
-    function removeAllLiquidity()
+    function removeAllLiquidity(uint max_token_eth_ex_rate, uint min_token_eth_ex_rate)
         external
         payable
+        exchangeRateWithIn(max_token_eth_ex_rate, min_token_eth_ex_rate)
+        nonReentrant
     {
         /******* TODO: Implement this function *******/
         // step1: transfer eth and token back to user
@@ -169,7 +192,7 @@ contract TokenExchange is Ownable {
         bool transfer = token.transfer(msg.sender, tokenAmount);
         assert(transfer);
         payable(msg.sender).transfer(ethAmount);
-        // step3: update state variables
+        // step2: update state variables
         token_reserves = token_reserves - tokenAmount;
         eth_reserves = eth_reserves - ethAmount;
         total_shares = total_shares - lps[msg.sender];
@@ -183,26 +206,40 @@ contract TokenExchange is Ownable {
 
     // Function swapTokensForETH: Swaps your token with ETH
     // You can change the inputs, or the scope of your function, as needed.
-    function swapTokensForETH(uint amountTokens)
+    function swapTokensForETH(uint amountTokens, uint max_exchange_rate)
         external 
         payable
+        nonReentrant
     {
         /******* TODO: Implement this function *******/
+        // step0: 
+        uint rate = TokenOverEthRate();
+        console.log("rate = ");
+        console.log(rate);
+        console.log("max_exchange_rate =");
+        console.log(max_exchange_rate);
+        require(rate < max_exchange_rate, "Eth price has increased significantly. Slippage aborts the transaction");
+
+        // console.log("token_reserves =");
+        // console.log(token_reserves);
+        // console.log("amountTokens = ");
+        // console.log(amountTokens);
+        // console.log("eth_reserves =");
+        // console.log(eth_reserves);
         // step1: take token from user and transfer eth back to user
         uint amountETH = amountTokens * eth_reserves / (token_reserves + amountTokens);
-        console.log("amountETH = ");
-        console.log(amountETH);
-        console.log("amountTokens = ");
-        console.log(amountTokens);
-        uint allowance = token.allowance(msg.sender, address(this));
-        console.log("allowance = ");
-        console.log(allowance);
+        // console.log("amountETH = ");
+        // console.log(amountETH);
+        
+        //uint allowance = token.allowance(msg.sender, address(this));
+        // console.log("allowance = ");
+        // console.log(allowance);
         bool tranfer = token.transferFrom(msg.sender, address(this), amountTokens);
         assert(tranfer);
-        console.log("pool balance = ");
-        console.log(token.balanceOf(address(this)));
-        console.log("msg.sender balance = ");
-        console.log(token.balanceOf(msg.sender));
+        // console.log("pool balance = ");
+        // console.log(token.balanceOf(address(this)));
+        // console.log("msg.sender balance = ");
+        // console.log(token.balanceOf(msg.sender));
         payable(msg.sender).transfer(amountETH);
         // step2: update pool state variables 
         token_reserves = token_reserves + amountTokens;
@@ -214,17 +251,33 @@ contract TokenExchange is Ownable {
     // Function swapETHForTokens: Swaps ETH for your tokens
     // ETH is sent to contract as msg.value
     // You can change the inputs, or the scope of your function, as needed.
-    function swapETHForTokens()
+    function swapETHForTokens(uint max_exchange_rate)
         external
         payable 
+        nonReentrant
     {
         /******* TODO: Implement this function *******/
+        // step0: compute exchange rate 
+        uint rate = EthOverTokenRate();
+        console.log("rate = ");
+        console.log(rate);
+        console.log("max_exchange_rate =");
+        console.log(max_exchange_rate);
+        require(rate < max_exchange_rate, "token price has increased significantly. Slippage aborts the transaction");
         // step1: take eth from user and transfer token back to user
         uint amountToken = msg.value * token_reserves / (eth_reserves + msg.value);
         bool transfer = token.transfer(msg.sender, amountToken);
         assert(transfer);
         // step2: update pool state variables 
         token_reserves = token_reserves - amountToken;
-        eth_reserves = eth_reserves - msg.value;
+        eth_reserves = eth_reserves + msg.value;
+    }
+
+    function EthOverTokenRate() internal view returns (uint256) {
+        return multiplier * eth_reserves / token_reserves / 10 ** 18; 
+    }
+
+    function TokenOverEthRate() internal view returns (uint256) {
+        return multiplier * token_reserves * (10 ** 18) / eth_reserves; 
     }
 }

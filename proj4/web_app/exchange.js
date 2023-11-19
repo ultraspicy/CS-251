@@ -397,6 +397,19 @@ const exchange_abi = [
     "type": "event"
   },
   {
+    "anonymous": false,
+    "inputs": [
+      {
+        "indexed": false,
+        "internalType": "uint256",
+        "name": "message",
+        "type": "uint256"
+      }
+    ],
+    "name": "SwapTokensForETHEvent",
+    "type": "event"
+  },
+  {
     "inputs": [],
     "name": "addLiquidity",
     "outputs": [],
@@ -488,7 +501,13 @@ const exchange_abi = [
     "type": "function"
   },
   {
-    "inputs": [],
+    "inputs": [
+      {
+        "internalType": "uint256",
+        "name": "max_exchange_rate",
+        "type": "uint256"
+      }
+    ],
     "name": "swapETHForTokens",
     "outputs": [],
     "stateMutability": "payable",
@@ -499,6 +518,11 @@ const exchange_abi = [
       {
         "internalType": "uint256",
         "name": "amountTokens",
+        "type": "uint256"
+      },
+      {
+        "internalType": "uint256",
+        "name": "max_exchange_rate",
         "type": "uint256"
       }
     ],
@@ -576,6 +600,12 @@ async function getPoolState() {
     let liquidity_wei = await provider.getBalance(exchange_address);
     // Convert WEI to ETH for UI
     let liquidity_eth = ethers.utils.formatEther(liquidity_wei);
+    // console.log("====== pool state ======");
+    // console.log("token_liquidity " + Number(liquidity_tokens));
+    // console.log("eth_liquidity " + Math.round(Number(liquidity_eth)));
+    // console.log("token_eth_rate " + Number(liquidity_tokens) / Number(liquidity_eth));
+    // console.log("eth_token_rate " + Number(liquidity_eth) / Number(liquidity_tokens));
+    // console.log("====== pool state end ======");
     return {
         token_liquidity: Number(liquidity_tokens),
         eth_liquidity: Math.round(Number(liquidity_eth)),
@@ -595,6 +625,8 @@ async function getPoolState() {
 /*** ADD LIQUIDITY ***/
 async function addLiquidity(amountEth, maxSlippagePct) {
     /** TODO: ADD YOUR CODE HERE **/
+    max_ex_rate = Math.round(10 ** 5 * poolState['token_eth_rate'] * (Number(maxSlippagePct) / 100 + 1));
+    min_ex_rate = Math.round(10 ** 5 * poolState['token_eth_rate'] * (1 - Number(maxSlippagePct) / 100));
     return await exchange_contract.
                     connect(provider.getSigner(defaultAccount)).
                     addLiquidity({ value: ethers.utils.parseEther(amountEth)});
@@ -618,18 +650,23 @@ async function removeAllLiquidity(maxSlippagePct) {
 /*** SWAP ***/
 async function swapTokensForETH(amountToken, maxSlippagePct) {
     /** TODO: ADD YOUR CODE HERE **/
-    //decimal = token_contract.connect(provider.getSigner(defaultAccount)).decimals();
     console.log("amountToken = " + amountToken + " maxSlippagePct = " + maxSlippagePct);
+    poolState = await getPoolState();
+    max_ex_rate = Math.round(10 ** 5 * poolState['token_eth_rate'] * (Number(maxSlippagePct) / 100 + 1));
+    console.log("swapTokensForETH max_ex_rate = " + max_ex_rate + "  pool_state = " + poolState['token_eth_rate']);
     return await exchange_contract.
                     connect(provider.getSigner(defaultAccount)).
-                    swapTokensForETH(amountToken);
+                    swapTokensForETH(amountToken, max_ex_rate);
 }
 
 async function swapETHForTokens(amountEth, maxSlippagePct) {
     /** TODO: ADD YOUR CODE HERE **/
+    poolState = await getPoolState();
+    max_ex_rate = Math.round(10 ** 5 * poolState['eth_token_rate'] * (Number(maxSlippagePct) / 100 + 1));
+    console.log("swapETHForTokens max_ex_rate = " + max_ex_rate + "  pool_state = " + poolState['token_eth_rate']);
     return await exchange_contract.
                     connect(provider.getSigner(defaultAccount)).
-                    swapETHForTokens({value: ethers.utils.parseEther(amountEth)});
+                    swapETHForTokens(max_ex_rate, {value: ethers.utils.parseEther(amountEth)});
 }
 
 // =============================================================================
@@ -755,6 +792,8 @@ const sanityCheck = async function() {
 
     // No liquidity provider rewards implemented yet
     if (Number(swap_fee[0]) == 0) {
+      // swap 100 eth for the token
+      // expect to get 100 token, but get 98
         await swapETHForTokens("100", "1");
         var state1 = await getPoolState();
         var expected_tokens_received = 100 * start_state.token_eth_rate;
