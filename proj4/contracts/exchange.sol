@@ -250,12 +250,12 @@ contract TokenExchange is Ownable {
         bool tranfer = token.transferFrom(msg.sender, address(this), amountTokens);
         assert(tranfer);
         payable(msg.sender).transfer(amountETH);
-        console.log("phiX");
-        console.log(phiX);
-        console.log("fee_reserve");
-        console.log(fee_reserve);
-        console.log("amountETH");
-        console.log(amountETH);
+        // console.log("phiX");
+        // console.log(phiX);
+        // console.log("fee_reserve");
+        // console.log(fee_reserve);
+        // console.log("amountETH");
+        // console.log(amountETH);
         // step2: update pool state variables 
         token_reserves = token_reserves + phiX;
         eth_reserves = eth_reserves - amountETH;
