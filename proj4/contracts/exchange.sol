@@ -6,8 +6,7 @@ import './token.sol';
 import "hardhat/console.sol";
 
 // todo 
-// 1) add check in swap contract that ensure there is at least 1 token and at least 1 eth 
-// 2) implement extra credit - the correct fee distribution 
+// 1) add check in swap contract that ensure there is at least 1 token and at least 1 eth  
 // 3) in exchage.js, write test cases that test the slipage can block the transaction
 // 4) in exchange.js, write test case that verify the fee distribution 
 //         - when user suddenly has a great share of pool, but no swap happens , then no fee
@@ -31,7 +30,9 @@ contract TokenExchange is Ownable {
     mapping(address => uint) private lps;
 
     // For Extra Credit only: to loop through the keys of the lps mapping
-    address[] private lp_providers;      
+    address[] private lp_providers;
+    mapping(address => uint) token_fee_reserves_extra;
+    mapping(address => uint) eth_fee_reserves_extra;
 
     // Total Pool Shares
     uint private total_shares = 0;
@@ -51,11 +52,11 @@ contract TokenExchange is Ownable {
     // modifier to limit the exchange rate
     modifier exchangeRateWithIn (uint max, uint min) {
         uint cur = TokenOverEthRate();
-        console.log("===========================================================");
-        console.log(cur);
-        console.log(max);
-        console.log(min);
-        console.log("===========================================================");
+        // console.log("===========================================================");
+        // console.log(cur);
+        // console.log(max);
+        // console.log(min);
+        // console.log("===========================================================");
         require(cur < max, "exchange rate too high");
         require(cur > min, "exchange rate too low");
         _;
@@ -89,11 +90,11 @@ contract TokenExchange is Ownable {
 
         // require nonzero values were sent
         require (msg.value > 0, "Need eth to create pool.");
-        console.log("createPool");
-        console.log(msg.value);
+        // console.log("createPool");
+        // console.log(msg.value);
         uint tokenSupply = token.balanceOf(msg.sender);
-        console.log(tokenSupply);
-        console.log(amountTokens);
+        // console.log(tokenSupply);
+        // console.log(amountTokens);
         require(amountTokens <= tokenSupply, "Not have enough tokens to create the pool");
         require (amountTokens > 0, "Need tokens to create pool.");
 
@@ -152,12 +153,29 @@ contract TokenExchange is Ownable {
         lps[msg.sender] = old_share + new_share;
         total_shares = total_shares + new_share;
         k = (token_to_add + token_reserves) * (msg.value + eth_reserves);
+
+        // EXTRE CREDIT
+        bool existingLP = false;
+        for(uint256 i = 0; i < lp_providers.length; i++) {
+            if (msg.sender == lp_providers[i]) {
+                existingLP = true;
+                break;
+            }
+        }
+        if (!existingLP) {
+            lp_providers.push(msg.sender);
+        }
     }
 
 
     // Function removeLiquidity: Removes liquidity given the desired amount of ETH to remove.
     // You can change the inputs, or the scope of your function, as needed.
-    function removeLiquidity(uint amountETH, uint max_token_eth_ex_rate, uint min_token_eth_ex_rate)
+    function removeLiquidity(
+        uint amountETH, 
+        uint max_token_eth_ex_rate, 
+        uint min_token_eth_ex_rate, 
+        bool extraCreditMode
+    )
         public 
         payable
         exchangeRateWithIn(max_token_eth_ex_rate, min_token_eth_ex_rate)
@@ -166,9 +184,9 @@ contract TokenExchange is Ownable {
         /******* TODO: Implement this function *******/
         // step1: make sure user didn't excessively withdraw
         uint shares = lps[msg.sender];
-        console.log("====== removeLiquidity ========");
-        console.log(amountETH);
-        console.log(eth_reserves * shares / total_shares);
+        // console.log("====== removeLiquidity ========");
+        // console.log(amountETH);
+        // console.log(eth_reserves * shares / total_shares);
         require(amountETH <= eth_reserves * shares / total_shares, "user doesn't have enough shares of pool to removeLiquidity");
         // step2.a: from token(eth)_reserve, transfer eth and token back to user
         uint amountToken = amountETH * token_reserves / eth_reserves;
@@ -176,14 +194,27 @@ contract TokenExchange is Ownable {
         assert(transfer);
         payable(msg.sender).transfer(amountETH);
         // step2.b: from fee_reserve, transfer eth and token back to user
-        uint ethReward = eth_fee_reserves * amountETH / eth_reserves;
-        uint tokenReward = token_fee_reserves * amountETH / eth_reserves;
+        uint ethReward;
+        uint tokenReward;
+        if (extraCreditMode) {
+            // EXTRA CREDIT
+            // withdraw proportional fee_resever_extra as well
+            uint about_remove_from_user = total_shares * amountETH / eth_reserves;
+            uint total_share_of_user = lps[msg.sender];
+            ethReward = eth_fee_reserves_extra[msg.sender] * about_remove_from_user / total_share_of_user;
+            tokenReward = token_fee_reserves_extra[msg.sender] * about_remove_from_user / total_share_of_user;
+        } else {
+            ethReward = eth_fee_reserves * amountETH / eth_reserves;
+            tokenReward = token_fee_reserves * amountETH / eth_reserves;
+        }
         bool rewardTransfer = token.transfer(msg.sender, tokenReward);
         assert(rewardTransfer);
         payable(msg.sender).transfer(ethReward);
         // step3: update state variables
         token_reserves = token_reserves - amountToken;
+        require(token_reserves > 1, "Need to make sure there is at least 1 token in pool");
         eth_reserves = eth_reserves - amountETH;
+        require(eth_reserves > 10 ** 18, "Need to make sure there is at least 1 ETH in poll");
         token_fee_reserves = token_fee_reserves - tokenReward;
         eth_fee_reserves = eth_fee_reserves - ethReward;
         uint share_to_remove = total_shares * amountETH / eth_reserves;
@@ -196,7 +227,11 @@ contract TokenExchange is Ownable {
 
     // Function removeAllLiquidity: Removes all liquidity that msg.sender is entitled to withdraw
     // You can change the inputs, or the scope of your function, as needed.
-    function removeAllLiquidity(uint max_token_eth_ex_rate, uint min_token_eth_ex_rate)
+    function removeAllLiquidity(
+        uint max_token_eth_ex_rate, 
+        uint min_token_eth_ex_rate,
+        bool extraCreditMode
+    )
         external
         payable
         exchangeRateWithIn(max_token_eth_ex_rate, min_token_eth_ex_rate)
@@ -211,14 +246,31 @@ contract TokenExchange is Ownable {
         assert(transfer);
         payable(msg.sender).transfer(ethAmount);
         // step1.b: from fee_reserve, transfer eth and token back to user
-        uint ethRewardAmount = eth_fee_reserves * shares / total_shares;
-        uint tokenRewardAmount = token_fee_reserves * shares / total_shares;
+        uint ethRewardAmount;
+        uint tokenRewardAmount;
+        if (extraCreditMode) {
+            ethRewardAmount = eth_fee_reserves_extra[msg.sender];
+            tokenRewardAmount = token_fee_reserves_extra[msg.sender];
+            uint256 lp_provider_index = 0;
+            for(uint256 i = 0; i < lp_providers.length; i++) {
+                if (msg.sender == lp_providers[i]) {
+                    lp_provider_index = i;
+                    break;
+                }
+            }
+            removeLP(lp_provider_index);
+        } else {
+            ethRewardAmount = eth_fee_reserves * shares / total_shares;
+            tokenRewardAmount = token_fee_reserves * shares / total_shares;
+        }
         bool rewardTran = token.transfer(msg.sender, tokenRewardAmount);
         assert(rewardTran);
         payable(msg.sender).transfer(ethRewardAmount);
         // step2: update state variables
         token_reserves = token_reserves - tokenAmount;
+        require(token_reserves > 1, "Need to make sure there is at least 1 token in pool");
         eth_reserves = eth_reserves - ethAmount;
+        require(eth_reserves > 10 ** 18, "Need to make sure there is at least 1 ETH in poll");
         total_shares = total_shares - lps[msg.sender];
         lps[msg.sender] = 0;
         k = (token_reserves - tokenAmount) * (eth_reserves - ethAmount);
@@ -260,6 +312,14 @@ contract TokenExchange is Ownable {
         token_reserves = token_reserves + phiX;
         eth_reserves = eth_reserves - amountETH;
         token_fee_reserves = token_fee_reserves + fee_reserve;
+
+        // EXTRA CREDIT
+        for(uint256 i = 0; i < lp_providers.length; i++) {
+            address lp_provider = lp_providers[i];
+            uint exact_fee_shares = fee_reserve * lps[lp_provider] / total_shares;
+            token_fee_reserves_extra[lp_provider] += exact_fee_shares;
+        }
+        
     }
 
     // Function swapETHForTokens: Swaps ETH for your tokens
@@ -289,6 +349,13 @@ contract TokenExchange is Ownable {
         token_reserves = token_reserves - amountToken;
         eth_reserves = eth_reserves + phiX;
         eth_fee_reserves = eth_fee_reserves + fee_reserve;
+
+        // EXTRA CREDIT
+        for(uint256 i = 0; i < lp_providers.length; i++) {
+            address lp_provider = lp_providers[i];
+            uint exact_fee_shares = fee_reserve * lps[lp_provider] / total_shares;
+            eth_fee_reserves_extra[lp_provider] += exact_fee_shares;
+        }
     }
 
     function EthOverTokenRate() internal view returns (uint256) {

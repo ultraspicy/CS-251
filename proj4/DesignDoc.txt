@@ -8,28 +8,60 @@ Group: Jianfeng Guo & Robert Dowling
 
 1. Explain why adding and removing liquidity to your exchange does not change the exchange rate.
 
+TL;DR - the ratio of ETH/TOKEN stays the same.
 
- function signature addLiquidity(amountEth, maxSlippagePct) and removeLiquidity(amountEth, maxSlippagePct) 
- use amountEth as input, and in exchange contract we derive the value of token from amountEth such that the 
- ratio of new_eth/eth_reserve equals the ratio of new_token/token_reserve.
+ Contract addLiquidity() and removeLiquidity() use amountEth as input, 
+ and we derive the value of tokenAmount from ethAmount by equation 
+ `token_reserves * msg.value / eth_reserves` such that the ratio of ETH/TOKEN 
+ remain the same, meaning the exchange rate doesn't change.
 
 
-2. Explain your scheme for rewarding liquidity providers and justify the design decisions you made. How does it satisfy the liquidity rewards requirements outlined in Section 7?
+2. Explain your scheme for rewarding liquidity providers and justify the design decisions you made. 
+How does it satisfy the liquidity rewards requirements outlined in Section 7?
 
+TL;DR - distributing reward upon each swapping. 
 
-The main problem of share based fee distribution is that some user can contribute and acquire a great portion of fee reserve. By
-the moment of withdraw, that user can unfairly take a great portion of the fee reserve even though its provided liquidity doesn't 
-involve in a lot of swaps.
+General idea 
+The main problem of share based fee distribution is that some user can contribute then 
+immediate withdraw to acquire a great portion of fee reserve even though the provided liquidity 
+doesn't involve in a lot of swaps.
 
-To compensate this, we need to distribute fee in real-time, aka every time a swap happens, the fee is distibuted.
-We use two mappings to record such distribution, and when user withdraw its liquidity, he just withdraw its portion of total fee reserve for itself.
+To compensate this, we need to distribute fee in real-time. Every time a swap happens, 
+the fee is distibuted. We use two mappings to record such distribution (for ETH and token respectively), 
+and when user withdraws its liquidity, he just withdraw its portion of total fee reserve.
+
+Actual implementation
+three new variables 
+    - address[] private lp_providers, for storing all members who provides liquidity
+    - mapping(address => uint) token_fee_reserves_extra, for storing token rewards for all lp
+    - mapping(address => uint) eth_fee_reserves_extra for storing eth rewards for all lp
+Modification for contract API
+ - addLiquidity(), it addes the logic to add the msg.sender into lp_providers array if 
+   msg.sender is a new liquidity provider
+ - removeLiquidity(). For extra credit, it computes the actual portion by to-be-removed/total-existing 
+   and only get reward from its own reward from token_fee_reserves_extra and eth_fee_reserves_extra.
+ - removeAllLiquidity(). Similar with removeLiquidity() but deduct the full rewards of him/her from 
+   reserve pool. Additionaly, remove the address from lp_providers
+ - swapTokensForETH() and swapETHForTokens(), distributing the reward by looping through all lp_providers
+   based on the at-the-moment share portion
+
+Testibility
+ - To avoid testing and grading friction, swapTokensForETH() and swapETHForTokens() update both nornal 
+   fee pool (token_fee_reserves and eth_fee_reserves, of type uint) and the extra_credit fee pool 
+   (token_fee_reserves_extra and eth_fee_reserves_extra, of type mapping). 
+ - When invoking removeLiquidity() or removeAllLiquidity(), a para with name extraCreditMode will give 
+   you the option to return different reward computations.
 
 
 3. Describe at least one method you used to minimize your exchange contract's gas usage. Why was this method effective?
 
-
-Only do essential computation such as token transfer, token exchange computation, fee distribution etc. We handle over the 
-computation of slippage to client and let client to tell us the range for swap.
+1. We only do essential computation in contract, such as token transfer, token exchange 
+    computation, fee distribution etc. We handle over the computation of slippage and other 
+    non-essentials to client and use paras to get such info.
+2. early return. We pre-compute the to-be state variables, and abort the transaction 
+   as early as possible. For example, if we find the ETH is less than 10^18 after the transaction,
+   we just return and skip running the remaining code.
+3. Combine the transaction of fee and pool liquidity together. 
 
 
 4. Optional Feedback:
@@ -39,13 +71,13 @@ Jianfeng - From 16h to 20h including reading proj4.pdf, watching section, implem
 
 4b. What is one thing that would have been useful to know before starting the assignment?
 
-Jianfeng - Gordan did a great job to help us avoid some common pitfalls.
+Jianfeng - Gordan did a great job to help us avoid some common pitfalls. If we know how much extra credit is gonna be, that is better.
 
 4c. If you could change one with about this assignment, what would you change?
 
 Jianfeng - test cases can be improved, for example, print out the value and range instead of just a true/false.
-Jianfeng - I think the fee distribution is essential and is the most tricky part of this project. Maybe it should not be extra credit
+Jianfeng - I think the fee distribution is essential. Maybe it should not be extra credit
 
 4d. Please feel free to include any other feedback you may have below.
 
-Jianfeng - Nothing to mention, great course, great assignments(maybe a little more challenging and weight more on the final score).
+Jianfeng - Nothing to mention, great course, great writting homework, great programming projects(maybe a little more challenging and weight more on the final score).

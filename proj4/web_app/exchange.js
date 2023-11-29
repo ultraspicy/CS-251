@@ -495,6 +495,11 @@ const exchange_abi = [
         "internalType": "uint256",
         "name": "min_token_eth_ex_rate",
         "type": "uint256"
+      },
+      {
+        "internalType": "bool",
+        "name": "extraCreditMode",
+        "type": "bool"
       }
     ],
     "name": "removeAllLiquidity",
@@ -518,6 +523,11 @@ const exchange_abi = [
         "internalType": "uint256",
         "name": "min_token_eth_ex_rate",
         "type": "uint256"
+      },
+      {
+        "internalType": "bool",
+        "name": "extraCreditMode",
+        "type": "bool"
       }
     ],
     "name": "removeLiquidity",
@@ -678,7 +688,7 @@ async function removeLiquidity(amountEth, maxSlippagePct) {
     min_ex_rate = Math.round(exchange_rate_multiplier * poolState['token_eth_rate'] * (1 - Number(maxSlippagePct) / 100));
     return await exchange_contract.
                     connect(provider.getSigner(defaultAccount)).
-                    removeLiquidity(ethers.utils.parseEther(amountEth), max_ex_rate, min_ex_rate);
+                    removeLiquidity(ethers.utils.parseEther(amountEth), max_ex_rate, min_ex_rate, true);
 }
 
 async function removeAllLiquidity(maxSlippagePct) {
@@ -688,7 +698,7 @@ async function removeAllLiquidity(maxSlippagePct) {
     min_ex_rate = Math.round(exchange_rate_multiplier * poolState['token_eth_rate'] * (1 - Number(maxSlippagePct) / 100));
     return await exchange_contract.
                     connect(provider.getSigner(defaultAccount)).
-                    removeAllLiquidity(max_ex_rate, min_ex_rate);
+                    removeAllLiquidity(max_ex_rate, min_ex_rate, true);
 }
 
 /*** SWAP ***/
