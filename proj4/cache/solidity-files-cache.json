@@ -37,8 +37,8 @@
       ]
     },
     "/Users/jianfeng/Developer/CS-251/proj4/contracts/exchange.sol": {
-      "lastModificationDate": 1701239132192,
-      "contentHash": "f0f9d77af153c790c58ac61d8d6e0440",
+      "lastModificationDate": 1701240187207,
+      "contentHash": "a494d16de6208eb09166fdd1c1aac3e8",
       "sourceName": "contracts/exchange.sol",
       "solcConfig": {
         "version": "0.8.17",

@@ -61,7 +61,7 @@ Testibility
 2. early return. We pre-compute the to-be state variables, and abort the transaction 
    as early as possible. For example, if we find the ETH is less than 10^18 after the transaction,
    we just return and skip running the remaining code.
-3. Combine the transaction of fee and pool liquidity together. 
+3. Combine the transaction of fee and pool liquidity together with withdraw the liquidity.
 
 
 4. Optional Feedback:
