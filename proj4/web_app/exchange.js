@@ -675,6 +675,7 @@ async function addLiquidity(amountEth, maxSlippagePct) {
     // console.log("max_ex_rate = " + max_ex_rate);
     // console.log("min_ex_rate = " + min_ex_rate);
     // console.log("============================");
+    await token_contract.connect(provider.getSigner(defaultAccount)).approve(exchange_address, Math.round(amountEth * max_ex_rate));
     return await exchange_contract.
                     connect(provider.getSigner(defaultAccount)).
                     addLiquidity(max_ex_rate, min_ex_rate, {value: ethers.utils.parseEther(amountEth)});

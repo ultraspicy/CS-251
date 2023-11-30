@@ -24,21 +24,22 @@ TL;DR - distributing reward upon each swapping.
 General idea 
 The main problem of share based fee distribution is that some user can contribute then 
 immediate withdraw to acquire a great portion of fee reserve even though the provided liquidity 
-doesn't involve in a lot of swaps.
+doesn't involve any swaps.
 
 To compensate this, we need to distribute fee in real-time. Every time a swap happens, 
 the fee is distibuted. We use two mappings to record such distribution (for ETH and token respectively), 
-and when user withdraws its liquidity, he just withdraw its portion of total fee reserve.
+and when user withdraws its liquidity, he just withdraw his portion of total fee reserve.
 
 Actual implementation
 three new variables 
     - address[] private lp_providers, for storing all members who provides liquidity
     - mapping(address => uint) token_fee_reserves_extra, for storing token rewards for all lp
     - mapping(address => uint) eth_fee_reserves_extra for storing eth rewards for all lp
+
 Modification for contract API
  - addLiquidity(), it addes the logic to add the msg.sender into lp_providers array if 
    msg.sender is a new liquidity provider
- - removeLiquidity(). For extra credit, it computes the actual portion by to-be-removed/total-existing 
+ - removeLiquidity(). For extra credit, it computes the actual portion of its own by to-be-removed/total-existing 
    and only get reward from its own reward from token_fee_reserves_extra and eth_fee_reserves_extra.
  - removeAllLiquidity(). Similar with removeLiquidity() but deduct the full rewards of him/her from 
    reserve pool. Additionaly, remove the address from lp_providers
@@ -50,7 +51,7 @@ Testibility
    fee pool (token_fee_reserves and eth_fee_reserves, of type uint) and the extra_credit fee pool 
    (token_fee_reserves_extra and eth_fee_reserves_extra, of type mapping). 
  - When invoking removeLiquidity() or removeAllLiquidity(), a para with name extraCreditMode will give 
-   you the option to return different reward computations.
+   you the option of returning different reward computations.
 
 
 3. Describe at least one method you used to minimize your exchange contract's gas usage. Why was this method effective?
@@ -61,8 +62,7 @@ Testibility
 2. early return. We pre-compute the to-be state variables, and abort the transaction 
    as early as possible. For example, if we find the ETH is less than 10^18 after the transaction,
    we just return and skip running the remaining code.
-3. Combine the transaction of fee and pool liquidity together with withdraw the liquidity.
-
+3. Combine the transaction of fee and pool liquidity together in liquidity withdrawing, aka removeLiquidity() and removeAllLiquidity().
 
 4. Optional Feedback:
 4a. How much time did you spend on the assignment?
