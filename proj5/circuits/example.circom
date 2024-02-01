@@ -1,3 +1,4 @@
+pragma circom 2.0.0;
 // The first this to know is that all ciruits have signals (wires in the
 // arithmetic circuit), and that while some of these signals are "input"s, not
 // all are. Thus, a circom program really does two things:
@@ -30,16 +31,17 @@ template Num2Bits(b) {
     signal output bits[b];
 
     // First, compute the bit values
-    for (var i = 0; i < b; ++i) {
+    for (var i = 0; i < b; i++) {
 
         // Use `<--` to assign to a signal without constraining it.
         // While our constraints can only use multiplication/addition, our
         // assignments can use any operation.
         bits[i] <-- (in >> i) & 1;
+        log(bits[i]);
     }
 
     // Now, contrain each bit to be 0 or 1.
-    for (var i = 0; i < b; ++i) {
+    for (var i = 0; i < b; i++) {
 
         // Use `===` to enforce a rank-1 constraint (R1C) on signals.
         bits[i] * (1 - bits[i]) === 0;
@@ -51,11 +53,12 @@ template Num2Bits(b) {
     // Now, construct a sum of all the bits...
     // This `var` is going to be a linear combination.
     var sum_of_bits = 0;
-    for (var i = 0; i < b; ++i) {
+    for (var i = 0; i < b; i++) {
         sum_of_bits += (2 ** i) * bits[i];
     }
     // Constrain that sum (which is a linear combination of signals) to
     // be `in`.
+    log(sum_of_bits);
     sum_of_bits === in;
 }
 
@@ -90,29 +93,36 @@ template SmallOdd(b) {
  * Enforces the factorization of `product` into `n` odd factors that are each
  * less than 2 ** `b`.
  */
-template SmallOddFactorization(n, b) {
-    signal input product;
-    signal private input factors[n];
+// template SmallOddFactorization(n, b) {
+//     signal input product;
+//     signal private input factors[n];
 
-    // Constrain each factor to be small and odd.
-    // We're going to need `n` subcircuits for small-odd-ness.
-    component smallOdd[n];
-    for (var i = 0; i < n; ++i) {
-        smallOdd[i] = SmallOdd(b);
-        smallOdd[i].in <== factors[i];
-    }
+//     // Constrain each factor to be small and odd.
+//     // We're going to need `n` subcircuits for small-odd-ness.
+//     component smallOdd[n];
+//     for (var i = 0; i < n; i++) {
+//         smallOdd[i] = SmallOdd(b);
+//         smallOdd[i].in <== factors[i];
+//     }
 
-    // Now constrain the factors to multiply to the product. Since there are
-    // many multiplications, we introduce helper signals to split the
-    // multiplications up into R1Cs.
-    signal partialProducts[n + 1];
-    partialProducts[0] <== 1;
-    for (var i = 0; i < n; ++i) {
-        partialProducts[i + 1] <== partialProducts[i] * factors[i];
-    }
-    product === partialProducts[n];
+//     // Now constrain the factors to multiply to the product. Since there are
+//     // many multiplications, we introduce helper signals to split the
+//     // multiplications up into R1Cs.
+//     signal partialProducts[n + 1];
+//     partialProducts[0] <== 1;
+//     for (var i = 0; i < n; i++) {
+//         partialProducts[i + 1] <== partialProducts[i] * factors[i];
+//     }
+//     product === partialProducts[n];
+// }
+
+template Multiplier2() {
+    signal input a;
+    signal input b;
+    signal output c;
+    c <== a*b;
 }
-
 // Finally, we set the `main` circuit for this file, which is the circuit that
 // `circom` will synthesize.
-component main = SmallOddFactorization(3, 8);
+//component main = SmallOddFactorization(3, 8);
+component main = Num2Bits(10);

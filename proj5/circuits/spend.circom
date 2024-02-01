@@ -1,4 +1,5 @@
-include "./mimc.circom";
+pragma circom 2.0.0;
+// include "./mimc.circom";
 
 /*
  * IfThenElse sets `out` to `true_value` if `condition` is 1 and `out` to
@@ -15,6 +16,13 @@ template IfThenElse() {
 
     // TODO
     // Hint: You will need a helper signal...
+    signal intermediate;
+    condition * (1 - condition) === 0;
+
+    // notes: the form must follow quadratic(x, y) + linear(x, y) + C
+    // quadratic1(x, y) + quadratic2(x, y) is not considered as quadratic
+    intermediate <== condition * true_value;
+    out <== intermediate + (1 - condition) * false_value;
 }
 
 /*
@@ -32,6 +40,38 @@ template SelectiveSwitch() {
     signal output out1;
 
     // TODO
+    s * (1 - s) === 0;
+    signal aux;
+
+    aux <== (in0-in1)*s;  
+    out0 <==  aux + in1; //s = 0, then out0 <-in1, s = 1, then out0 <- in0
+    out1 <== -aux + in0;  //s = 0, then out1 <-in0, s = 1, then out1 <- in1
+}
+
+template SelectiveSwitch2() {
+    signal input in0;
+    signal input in1;
+    signal input s;
+    signal output out0;
+    signal output out1;
+
+    // TODO
+    // when s = 1, out <- in0
+    // when s = 0, out <- in1 
+    component IfThenElse0 = IfThenElse();
+    IfThenElse0.true_value <== in0;
+    IfThenElse0.false_value <== in1;
+    IfThenElse0.condition <== s;
+
+    // when s = 1, out <- in1
+    // when s = 0, out <- in0 
+    component IfThenElse1 = IfThenElse();
+    IfThenElse1.true_value <== in0;
+    IfThenElse1.false_value <== in1;
+    IfThenElse1.condition <== 1 - s;
+
+    out0 <== IfThenElse0.out;
+    out1 <== IfThenElse1.out;
 }
 
 /*
@@ -48,12 +88,14 @@ template SelectiveSwitch() {
  *       The "direction" keys the boolean directions from the SparseMerkleTree
  *       path, casted to string-represented integers ("0" or "1").
  */
-template Spend(depth) {
-    signal input digest;
-    signal input nullifier;
-    signal private input nonce;
-    signal private input sibling[depth];
-    signal private input direction[depth];
+// template Spend(depth) {
+//     signal input digest;
+//     signal input nullifier;
+//     signal private input nonce;
+//     signal private input sibling[depth];
+//     signal private input direction[depth];
 
-    // TODO
-}
+//     // TODO
+// }
+
+component main = SelectiveSwitch2();
