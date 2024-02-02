@@ -1,4 +1,4 @@
-pragma circom 2.0.0;
+// pragma circom 2.0.0;
 // The first this to know is that all ciruits have signals (wires in the
 // arithmetic circuit), and that while some of these signals are "input"s, not
 // all are. Thus, a circom program really does two things:
