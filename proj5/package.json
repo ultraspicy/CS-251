@@ -6,7 +6,7 @@
     "test": "test"
   },
   "scripts": {
-    "test": "mocha -s 1s -t 5s test/if_then_else.js test/mimc.js test/selective_switch.js"
+    "test": "mocha -s 1s -t 5s test/if_then_else.js test/mimc.js test/selective_switch.js test/compute_spend_inputs.js"
   },
   "author": "aozdemir",
   "license": "GPL-3.0",

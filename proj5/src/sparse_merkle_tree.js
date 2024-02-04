@@ -42,12 +42,21 @@ class SparseMerkleTree {
         assert.ok(this.next_index < 2 ** this.depth);
         let index = this.next_index++;
         this.leaf_indices[item] = index;
+        // In JavaScript, when you use an array (like [this.depth, index]) 
+        // as a key in an object (or map-like structure), JavaScript internally 
+        // converts the array to a string using the Array.prototype.toString method. 
+        // This method essentially joins the array elements into a string, separated 
+        // by commas. So, the array [this.depth, index] becomes the string 
+        // "this.depth,index" when used as a key.
         this.nodes[[this.depth, index]] = item;
         let level = this.depth;
         while (level > 0) {
             level--;
+            // find the parent index
             index = Math.floor(index / 2);
+            // left child 
             const left = this.node(level + 1, 2 * index);
+            // right child
             const right = this.node(level + 1, 2 * index + 1);
             this.nodes[[level, index]] = mimc2(left, right);
         }
