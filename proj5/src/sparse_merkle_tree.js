@@ -4,7 +4,7 @@ const assert = require('assert').strict;
 class SparseMerkleTree {
     /*
      * Constructs a new sparse merkle tree.
-     * This is an insert-only set which is reprented by a single 
+     * This is an insert-only set which is reprented by a single
      *
      * depth: the number of non-root layers in the tree
      *
@@ -79,6 +79,7 @@ class SparseMerkleTree {
         let level = this.depth;
         let path = [];
         while (level > 0) {
+            // if index is even, direction is false; if index is odd, direction is true
             const direction = !!(index & 1);
             level--;
             index = Math.floor(index / 2);
