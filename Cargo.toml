@@ -1,0 +1,6 @@
+[workspace]
+
+members = [
+    "sp1_bench/fibonacci/program",
+    "sp1_bench/fibonacci/script",
+]
